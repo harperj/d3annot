@@ -1,0 +1,33 @@
+{
+  "manifest_version": 2,
+
+  "name": "My extension",
+  "description": "Vis class project",
+  "version": "1.0",
+
+	"content_scripts": [
+		{
+			"matches": ["http://almossawi.com/firefox/prose/",
+"http://www.nytimes.com/interactive/2013/05/25/sunday-review/corporate-taxes.html",
+"http://roadtolarissa.com/meteors/",
+"http://people.ischool.berkeley.edu/~derekkuo/iolab_facebook/",
+"http://www.nytimes.com/interactive/2013/02/20/movies/among-the-oscar-contenders-a-host-of-connections.html",
+"http://www.nytimes.com/interactive/2012/05/17/business/dealbook/how-the-facebook-offering-compares.html",
+"http://blog.futureadvisor.com/401k-fees-are-determined-by-hr-negotiation-skills/",
+"http://www.nytimes.com/interactive/2013/03/01/world/americas/border-graphic.html",
+"http://thestoryoftheseason.com/",
+"http://blog.polychart.com/2013/02/so-what-do-canadians-do-anyways.html"],
+			"css": ["content.css"],
+			"js": ["d3.v3.min.js", "jquery.min.js", "test.js", "FileSaver.js"]
+		}
+	],
+
+  "browser_action": {
+    "default_icon": "icon.png",
+    "default_popup": "popup.html"
+  },
+  "permissions": [
+    "https://secure.flickr.com/"
+  ],
+  "web_accessible_resources": ["d3.v3.min.js", "injected.js", "jquery.min.map", "jquery.min.js", "FileSaver.js"]
+}
