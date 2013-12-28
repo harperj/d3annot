@@ -31,7 +31,7 @@ function injectJS(url) {
 }
 
 injectJS(chrome.extension.getURL('lib/jquery.min.js'));
-injectJS(chrome.extension.getURL('FileSaver.js'));
+injectJS(chrome.extension.getURL('lib/FileSaver.js'));
 function waitToInject() {
 	setTimeout(doInject, 5);
 }
