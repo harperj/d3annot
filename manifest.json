@@ -18,7 +18,7 @@
 "http://thestoryoftheseason.com/",
 "http://blog.polychart.com/2013/02/so-what-do-canadians-do-anyways.html"],
 			"css": ["content.css"],
-			"js": ["d3.v3.min.js", "jquery.min.js", "test.js", "FileSaver.js"]
+			"js": ["d3.v3.min.js", "jquery.min.js", "main_content.js"]
 		}
 	],
 
