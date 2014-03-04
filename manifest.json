@@ -16,18 +16,41 @@
 "http://blog.futureadvisor.com/401k-fees-are-determined-by-hr-negotiation-skills/",
 "http://www.nytimes.com/interactive/2013/03/01/world/americas/border-graphic.html",
 "http://thestoryoftheseason.com/",
-"http://blog.polychart.com/2013/02/so-what-do-canadians-do-anyways.html"],
-			"css": ["content.css"],
-			"js": ["lib/d3.v3.min.js", "lib/jquery.min.js", "main_content.js", "lib/FileSaver.js"]
+"http://blog.polychart.com/2013/02/so-what-do-canadians-do-anyways.html",
+"http://bl.ocks.org/stewartnoyce/8699346",
+"http://bl.ocks.org/StewartNoyce/raw/8699346/",
+"http://roadtolarissa.com/film-strips/",
+"http://www.roadtolarissa.com/twisters/",
+"http://roadtolarissa.com/nba-draft/",
+"https://vida.io/discussion/WgBMc4zDWF7YpqXGR",
+"https://vida.io/discussion/SuRAGDs7J78HCvoxE",
+"http://yuri.io/census/",
+"http://congress.joshreyes.com/",
+"http://windhistory.com/*",
+"http://sepans.com/wikistalker/",
+"http://blog.polychart.com/2013/01/why-are-people-shooting-up-our-schools.html",
+"http://www.nytimes.com/interactive/2012/03/07/us/politics/how-candidates-fared-with-different-demographic-groups.html",
+"http://dataviz.rennesmetropole.fr/quisommesnous/en/",
+"http://bl.ocks.org/richardwestenra/raw/129f64bfa2b0d48d27c9/",
+"http://bl.ocks.org/cpudney/raw/2248382/",
+"http://sizes.darkgreener.com/",
+"http://prcweb.co.uk/lab/what-makes-us-happy/",
+"http://whatdoyouworkfor.appspot.com/index.html",
+"http://vallandingham.me/vis/movie/",
+"http://bl.ocks.org/sjengle/raw/5431779/"],
+			"css": ["content.css", "lib/spectrum.css"],
+			"js": ["lib/d3.v3.min.js", "lib/jquery.min.js", "main_content.js", "lib/FileSaver.js", "lib/jquery.dataTables.min.js", "lib/spectrum.js"]
 		}
 	],
-
-  "browser_action": {
-    "default_icon": "icon.png",
-    "default_popup": "popup.html"
-  },
+	
+	"background": {
+		"scripts": ["background.js"]
+	},
+	
   "permissions": [
+		"tabs",
+		"activeTab",
     "https://secure.flickr.com/"
   ],
-  "web_accessible_resources": ["lib/d3.v3.min.js", "injected.js", "lib/jquery.min.map", "lib/jquery.min.js", "lib/FileSaver.js"]
+  "web_accessible_resources": ["display.js", "lib/d3.v3.min.js", "injected.js", "lib/jquery.min.map", "lib/jquery.dataTables.min.js", "lib/jquery-ui.js", "lib/jquery.min.js", "lib/FileSaver.js", "lib/spectrum.js"]
 }
