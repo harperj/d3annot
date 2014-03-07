@@ -259,9 +259,11 @@ var visInjector = {
 
   exportDataToPlugin: function(selector) {
 		var data = []
+		console.log(selector);
 		d3.selectAll(selector).each(function(d, i) {
 			var item = {};
-			item.d3Data = d3.select(this).data()[0];
+			item.d3Data = d3.select(this).node().__data__;
+			console.log(item.d3Data);
 			item.nodeText = this.outerHTML;
 			item.cssText = window.getComputedStyle(this, null).cssText;
 			data.push(item);
