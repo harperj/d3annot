@@ -14,20 +14,20 @@
   white-space:nowrap;
   list-style-type: none;
   list-style-position: none;
-  }
+}
 
 .custom-menu li {
   margin-left:-0px;
   padding: 3px;
-  }
+}
 
 .custom-menu li:hover {
   background-color: #DDD;
-  }
+}
   
 .sideBar {
-position: fixed;
-z-index: 1000;
+	position: fixed;
+	z-index: 1000;
 }
 
 .sideBar.boxLeft

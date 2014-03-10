@@ -3,8 +3,8 @@ chrome.runtime.onMessage.addListener(function(message, sender, sendResponse) {
 	if (message.type == "syn") {
 		loadData(message.payload);
 		dat = message.payload;
-		console.log(message.payload);
-		//processPayload(message.payload);
+		console.log(dat);
+		processPayload(message.payload);
 		initConnection(sender.tab.id);
 	}
 });
@@ -39,6 +39,7 @@ function processPayload(payload) {
 			}
 			
 			var node = $(payload[i].nodeText)[0];
+			console.log(node);
 			var r = parseFloat(d3.select(node).attr("cx"));
 			if (data[schema_count].hasOwnProperty("cx")) {
 				data[schema_count]["cx"].push(r);
@@ -66,11 +67,14 @@ function makeSVG(tag, attrs) {
 function loadData(payload) {
 	var data = payload;
 	var last_schema = [];
-	var content = $('<table id="extracted_content" style="border:1px solid black; font:11pt;"></table>');
+	var content = $('<table id="extracted_content" class="dataTable"></table>');
 	var foot = $('<tfoot></tfoot>');
-	console.log("test");
-	console.log(data.length);
+	
 	for (var i = 0; i < data.length; ++i) {
+		
+		var el = updateElForTable(data[i].nodeText, data[i].cssText);
+		var svg = $('<svg width="100" height="100"></svg>');
+		
 		// check to see if we have a new schema
 		if (data[i].d3Data instanceof Object) {
 			for (prop in data[i].d3Data) {
@@ -79,32 +83,49 @@ function loadData(payload) {
 					last_schema = Object.keys(data[i].d3Data);
 
 					console.log("new schema");
-					var head = createHeader(last_schema);
+					var head = createHeader(last_schema, el);
 					content.append(head);
 					break;
 				}
 			}
-		
+			
 			// we are sure to have a header now.  let's create the current row
 			var row = $('<tr></tr>');
 			for (var j = 0; j < last_schema.length; ++j) {
-				if (i === 62) console.log(data[i]);
-				var col = $('<td style="border-left:1px solid black; font-size:8pt;">' + data[i].d3Data[last_schema[j]] + '</td>');
+				var col = $('<td>' + data[i].d3Data[last_schema[j]] + '</td>');
 				$(row).append(col);
 			}
-			var col = $('<td style="border-left:1px solid black; font-size:8pt; width:100px; height:100px;"></td>');
-			var svg = $('<svg width="100" height="100"></svg>');
 			
-			var el = updateElForTable(data[i].nodeText, data[i].cssText);
+			if (el != null) {
+					$(svg).append(el);
+					for (var j = 0; j < el.attributes.length; ++j) {
+						if (el.attributes[j].name != "style") {
+							var col = $('<td>' + el.attributes[j].value + '</td>');
+							$(row).append(col);
+						}
+					}
+			}
 			
-			if (el != null) $(svg).append(el);
+			var col = $('<td></td>');
 			$(col).append(svg);
 			$(row).append(col);
 			content.append(row);
 		}
 	}
+	$(content).append(foot);
 	$('body').append(content);
-	$("body").html($("body").html());
+	
+	/* Add/remove class to a row when clicked on */
+	$('#extracted_content tr').click( function() {
+		$(this).toggleClass('row_selected');
+	} );
+	
+	var dataTable = $('#extracted_content').dataTable({
+		"bPaginate": false
+	});
+	$("svg").each(function() {
+		$(this).html($(this).html());
+	});
 }
 
 function updateElForTable(nodeText, cssText) {
@@ -123,12 +144,23 @@ function updateElForTable(nodeText, cssText) {
 	}
 }
 
-function createHeader(properties) {
+function createHeader(properties, el) {
 	var head = $('<thead></thead>');
 	var row = $('<tr></tr>');
 	for (var i = 0; i < properties.length; ++i) {
-		$(row).append($('<th style="font:11pt;">' + properties[i] + '</th>'));
+		$(row).append($('<th>' + properties[i] + '</th>'));
 	}
+	
+	if (el != null) {
+			for (var j = 0; j < el.attributes.length; ++j) {
+				if (el.attributes[j].name != "style") {
+					var col = $('<th>' + el.attributes[j].name + '</th>') 
+					console.log(el.attributes);
+					$(row).append(col);
+				}
+			}
+	}
+	$(row).append('<th>mark</th>');
 	head.append(row);
 	return head;
 }

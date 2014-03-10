@@ -28,8 +28,10 @@ function rectangleSelect(selector, x1, y1, x2, y2) {
 document.addEventListener('dataExportEvent', function (event) {
   var data = event.detail;
 	// Send an init message to the background window to open the display
+	console.log("sending init message");
   chrome.runtime.sendMessage({type: "init"}, function(response) {
 		// Send a sync message to the display, which will initialize a port
+		console.log("sending sync message");
   	chrome.runtime.sendMessage({type: "syn", payload: data});
   });
 });
@@ -58,13 +60,13 @@ function injectCSS(url) {
 	document.body.appendChild(link);
 }
 
-injectCSS("//ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/themes/smoothness/jquery-ui.css");
-injectCSS('//ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/css/jquery.dataTables.css');
+//injectCSS("//ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/themes/smoothness/jquery-ui.css");
+//injectCSS('//ajax.aspnetcdn.com/ajax/jquery.dataTables/1.9.4/css/jquery.dataTables.css');
 injectJS(chrome.extension.getURL('lib/jquery.min.js'));
 injectJS(chrome.extension.getURL('lib/FileSaver.js'));
-injectJS('http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/jquery-ui.min.js');
-injectJS(chrome.extension.getURL('lib/jquery.dataTables.min.js'));
-injectJS(chrome.extension.getURL('lib/spectrum.js'));
+//injectJS('http://ajax.googleapis.com/ajax/libs/jqueryui/1.10.4/jquery-ui.min.js');
+//injectJS(chrome.extension.getURL('lib/jquery.dataTables.min.js'));
+//injectJS(chrome.extension.getURL('lib/spectrum.js'));
 
 
 function waitToInject() {

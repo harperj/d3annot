@@ -38,8 +38,8 @@
 "http://whatdoyouworkfor.appspot.com/index.html",
 "http://vallandingham.me/vis/movie/",
 "http://bl.ocks.org/sjengle/raw/5431779/"],
-			"css": ["content.css", "lib/spectrum.css"],
-			"js": ["lib/d3.v3.min.js", "lib/jquery.min.js", "main_content.js", "lib/FileSaver.js", "lib/jquery.dataTables.min.js", "lib/spectrum.js"]
+			"css": ["content.css"],
+			"js": ["lib/d3.v3.min.js", "lib/jquery.min.js", "main_content.js", "lib/FileSaver.js"]
 		}
 	],
 	
@@ -52,5 +52,5 @@
 		"activeTab",
     "https://secure.flickr.com/"
   ],
-  "web_accessible_resources": ["display.js", "lib/d3.v3.min.js", "injected.js", "lib/jquery.min.map", "lib/jquery.dataTables.min.js", "lib/jquery-ui.js", "lib/jquery.min.js", "lib/FileSaver.js", "lib/spectrum.js"]
+  "web_accessible_resources": ["http://debug.datatables.net/bookmarklet/DT_Debug.js?=*", "display.js", "lib/d3.v3.min.js", "injected.js", "lib/jquery.min.map", "lib/jquery.dataTables.min.js", "lib/jquery-ui.js", "lib/jquery.min.js", "lib/FileSaver.js"]
 }
