@@ -18,3 +18,4 @@
 18 - http://bl.ocks.org/johan/raw/5544395/
 19 - http://nlpviz.bpodgursky.com/home - can extract data, but needs a little  more work before I get it working with my linked view
 20 - http://data.karmi.cz/d3/life-expectancy-slopegraph-normalized/
+21 - http://data.karmi.cz/d3/life-expectancy-panel-chart/
