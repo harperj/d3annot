@@ -13,7 +13,7 @@ extractClassHoveredElement = (elem) ->
 		console.log "non-empty class list"
 			
 extractHoveredElement = (elem) ->
-	elem = e.target or e.srcElement
+	elem = elem.target or elem.srcElement
 	elem_children = ($ elem).find '*'
 	saveDataJSON elem_children
 	(d3.selectAll '.mouseOn').classed "mouseOn", false

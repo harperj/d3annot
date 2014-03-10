@@ -37,7 +37,14 @@
 "http://prcweb.co.uk/lab/what-makes-us-happy/",
 "http://whatdoyouworkfor.appspot.com/index.html",
 "http://vallandingham.me/vis/movie/",
-"http://bl.ocks.org/sjengle/raw/5431779/"],
+"http://bl.ocks.org/sjengle/raw/5431779/",
+"http://thinkdatavis.com/portfolio/english-football-tickets-value-for-money.html",
+"http://vallandingham.me/vis/jobs_by_state.html",
+"http://bl.ocks.org/johan/raw/5544395/",
+"http://bost.ocks.org/mike/miserables/",
+"http://nlpviz.bpodgursky.com/home",
+"http://data.karmi.cz/d3/life-expectancy-slopegraph-normalized/",
+"http://data.karmi.cz/d3/life-expectancy-panel-chart/"],
 			"css": ["content.css"],
 			"js": ["lib/d3.v3.min.js", "lib/jquery.min.js", "main_content.js", "lib/FileSaver.js"]
 		}

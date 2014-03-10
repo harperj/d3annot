@@ -1,0 +1,20 @@
+1 - http://www.nytimes.com/interactive/2013/05/25/sunday-review/corporate-taxes.html
+2 - http://bl.ocks.org/StewartNoyce/raw/8699346/ - ERROR: stringify can't convert circular object for messaging.  Should be fixable
+3 - http://roadtolarissa.com/meteors/
+4 - http://www.roadtolarissa.com/twisters/ - ERROR: problem with path type, this one will require some thought
+5 - http://roadtolarissa.com/nba-draft/ - PARTIALLY WORKS; JS objects don't explode into their components and I need to fix rectangle rendering
+6 - https://vida.io/discussion/WgBMc4zDWF7YpqXGR - PARTIALLY WORKS same problems as (5)
+7 - http://yuri.io/census/ - This one gives really weird results when I do the 'extract by tag' method, but as the associated JSON file shows I can get the data (may be hard to interpret)
+8 - http://congress.joshreyes.com/ - I get the geo data but it will be hard to display intelligently.  The bar charts don't seem to be working?  Let's talk on this one.
+9 - http://windhistory.com/map.html - Data extracted for airports & wind measurements
+10 - http://sepans.com/wikistalker/
+11 - http://www.nytimes.com/interactive/2012/03/07/us/politics/how-candidates-fared-with-different-demographic-groups.html - runs into a bug, i'll have to look into it
+12 - http://bl.ocks.org/richardwestenra/raw/129f64bfa2b0d48d27c9/
+13 - http://bl.ocks.org/cpudney/raw/2248382/
+14 - http://prcweb.co.uk/lab/what-makes-us-happy/
+15 - http://vallandingham.me/vis/movie/
+16 - http://thinkdatavis.com/portfolio/english-football-tickets-value-for-money.html
+17 - http://vallandingham.me/vis/jobs_by_state.html - complex data issue
+18 - http://bl.ocks.org/johan/raw/5544395/
+19 - http://nlpviz.bpodgursky.com/home - can extract data, but needs a little  more work before I get it working with my linked view
+20 - http://data.karmi.cz/d3/life-expectancy-slopegraph-normalized/
