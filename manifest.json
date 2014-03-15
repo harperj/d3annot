@@ -46,7 +46,7 @@
 "http://data.karmi.cz/d3/life-expectancy-slopegraph-normalized/",
 "http://data.karmi.cz/d3/life-expectancy-panel-chart/"],
 			"css": ["content.css"],
-			"js": ["lib/d3.v3.min.js", "lib/jquery.min.js", "main_content.js", "lib/FileSaver.js"]
+			"js": ["lib/d3.v3.min.js", "lib/jquery.js", "main_content.js", "lib/FileSaver.js"]
 		}
 	],
 	
@@ -59,5 +59,5 @@
 		"activeTab",
     "https://secure.flickr.com/"
   ],
-  "web_accessible_resources": ["http://debug.datatables.net/bookmarklet/DT_Debug.js?=*", "display.js", "lib/d3.v3.min.js", "injected.js", "lib/jquery.min.map", "lib/jquery.dataTables.min.js", "lib/jquery-ui.js", "lib/jquery.min.js", "lib/FileSaver.js"]
+  "web_accessible_resources": ["display.js", "lib/d3.v3.min.js", "injected.js", "lib/jquery.min.map", "lib/jquery.dataTables.js", "lib/jquery-ui.js", "lib/jquery.js", "lib/FileSaver.js"]
 }
