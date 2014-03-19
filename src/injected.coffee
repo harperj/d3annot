@@ -28,9 +28,12 @@ saveDataJSON = (selector) ->
 
 exportDataToPlugin = (selector) ->
 	data = []
+	id_counter = 0
 	console.log selector
 	(d3.selectAll selector).each (d, i) ->
 		item = {}
+		item.id = id_counter
+		id_counter++;
 		item.d3Data = (d3.select this).node().__data__
 		item.nodeText = this.outerHTML
 		item.cssText = (window.getComputedStyle this, null).cssText

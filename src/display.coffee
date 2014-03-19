@@ -4,7 +4,7 @@ class VisConnector
 			if message.type == "syn"
 				@initConnection(sender.tab.id)
 				@data = @processPayload(message.payload)
-				@getMappings()
+				#@getMappings()
 				@tableView = new TableView(@data)
 		
 	initConnection: (tabId) ->
@@ -30,7 +30,42 @@ class VisConnector
 			return node
 		return null
 		
-	processPayload: (payload) ->
+	# How will we handle nonexistant fields?
+	extractVisData: (node, cssText) ->
+		visRow = {}
+		nodeAttrs = {}
+		$.each node.attributes, (j, attr) ->
+			nodeAttrs[attr.name] = attr.value
+		
+		visRow["shape"] = node.tagName.toLowerCase();
+		visRow["color"] = nodeAttrs["fill"]
+		visRow["stroke"] = nodeAttrs["stroke"]
+		visRow["stroke-width"] = nodeAttrs["stroke-width"]
+		if visRow["shape"] == "circle"
+			#visRow["x-position"] = nodeAttrs["cx"]
+			#visRow["y-position"] = nodeAttrs["cy"]
+			visRow["radius"] = nodeAttrs["r"]
+		else if visRow["shape"] == "rect"
+			#visRow["x-position"] = nodeAttrs["x"]
+			#visRow["y-position"] = nodeAttrs["y"]
+			visRow["width"] = nodeAttrs["width"]
+			visRow["height"] = nodeAttrs["height"]
+		return visRow
+		
+	# This is a little hacky -- perhaps think about it a bit more later
+	extractVisSchema: (node) ->
+		shape = node.tagName.toLowerCase();
+		if shape == "circle"
+			return {"shape": [], "color": [], "stroke": [], \ 
+								"stroke-width": [], "radius": []}
+		else if shape == "rect"
+			return {"shape": [], "color": [], "stroke": [], \ 
+								"stroke-width": [], "width": [], "height": []}
+		else
+			return {"shape": [], "color": [], "stroke": [], \ 
+								"stroke-width": [] }
+		
+	processPayload: (payload) =>
 		data = []
 		schema_count = -1
 		last_schema = []
@@ -51,32 +86,32 @@ class VisConnector
 					unless schema_count == -1
 						data[schema_count].numEls = data[schema_count][last_schema[0]].length
 					last_schema = Object.keys(d3Data)
+					# schema should also contain the tagname/shape
+					last_schema.push(node.tagName)
+					
 					schema_count++
 					data[schema_count] = {}
 				
 					# set the schema for data and visual attributes of this set
-					data[schema_count].d3Schema = Object.keys(d3Data)
-					data[schema_count].visAttr = []
-					$.each node.attributes, (j, attr) ->
-						unless attr.name == "style"
-							data[schema_count].visAttr.push attr.name
+					data[schema_count].d3Data = {}
+					$.each Object.keys(d3Data), (j, key) ->
+						data[schema_count].d3Data[key] = []
 						
+					data[schema_count].visData = @extractVisSchema(node)
+
 					return false;
 		
 			# now let's add the data item to our structure
 			$.each d3Data, (prop, val) ->
-				if data[schema_count].hasOwnProperty(prop)
-					data[schema_count][prop].push(val)
+				if data[schema_count].d3Data.hasOwnProperty(prop)
+					data[schema_count].d3Data[prop].push(val)
 				else
-					data[schema_count][prop] = [val]
+					data[schema_count].d3Data[prop] = [val]
 		
 			# finally extract the visual attributes
-			$.each node.attributes, (j, attr) ->
-				unless attr.name == "style"
-					if data[schema_count].hasOwnProperty(attr.name)
-						data[schema_count][attr.name].push(attr.value)
-					else
-						data[schema_count][attr.name] = [attr.value]
+			visRow = @extractVisData(node, obj.cssText)
+			$.each Object.keys(data[schema_count].visData), (j, key) ->
+				data[schema_count].visData[key].push(visRow[key])
 		
 			# and add the node
 			if data[schema_count].hasOwnProperty('node')
@@ -85,7 +120,7 @@ class VisConnector
 				data[schema_count]['node'] = [@prepareMarkForDisplay(node, obj.cssText)];
 			
 		
-		data[schema_count].numEls = data[schema_count][last_schema[0]].length
+		data[schema_count].numEls = data[schema_count].d3Data[last_schema[0]].length
 		return data
 	
 		
@@ -103,10 +138,10 @@ class TableView
 		
 			# build a table
 			hrow = $ '<tr></tr>'
-			for prop in dataSet.d3Schema
+			for prop of dataSet.d3Data
 				th = $ '<th>' + prop + '</th>'
 				$(hrow).append th
-			for attr in dataSet.visAttr
+			for attr of dataSet.visData
 				th = $ '<th>' + attr + '</th>'
 				$(hrow).append th
 			
@@ -119,12 +154,12 @@ class TableView
 		
 			for ind in [0..(dataSet.numEls-1)]
 				row = $ '<tr></tr>'
-				for prop in dataSet.d3Schema
-					td = $ '<td>' + dataSet[prop][ind] + '</td>'
+				for prop of dataSet.d3Data
+					td = $ '<td>' + dataSet.d3Data[prop][ind] + '</td>'
 					$(row).append td
 				
-				for attr in dataSet.visAttr
-					td = $ '<td>' + dataSet[attr][ind] + '</td>'
+				for attr of dataSet.visData
+					td = $ '<td>' + dataSet.visData[attr][ind] + '</td>'
 					$(row).append td
 				
 				# add the mark

@@ -44,7 +44,8 @@
 "http://bost.ocks.org/mike/miserables/",
 "http://nlpviz.bpodgursky.com/home",
 "http://data.karmi.cz/d3/life-expectancy-slopegraph-normalized/",
-"http://data.karmi.cz/d3/life-expectancy-panel-chart/"],
+"http://data.karmi.cz/d3/life-expectancy-panel-chart/",
+"http://www.nytimes.com/interactive/2013/08/02/sports/baseball/bang-for-your-buck.html"],
 			"css": ["content.css"],
 			"js": ["lib/d3.v3.min.js", "lib/jquery.js", "main_content.js", "lib/FileSaver.js"]
 		}

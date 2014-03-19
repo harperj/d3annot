@@ -9,13 +9,15 @@ chrome.runtime.onConnect.addListener (port) ->
 	
 createReplacement = (node) ->
 	square = (document.createElementNS "http://www.w3.org/2000/svg", "rect")
-	console.log node
+	square.setAttribute "x", -parseFloat(d3.select(node).attr("r"))
+	square.setAttribute "y", -parseFloat(d3.select(node).attr("r"))
+	
 	$.each node.attributes, (j, attr) ->
-		#if attr.name == "cx"
-		square.setAttribute "x", -parseFloat(d3.select(node).attr("r"))
-		#else if attr.name == "cy"
-		square.setAttribute "y", -parseFloat(d3.select(node).attr("r"))
-		if attr.name == "r"
+		if attr.name == "cx"
+			square.setAttribute "x", parseFloat(attr.value) - parseFloat(d3.select(node).attr("r"))
+		else if attr.name == "cy"
+			square.setAttribute "y", parseFloat(attr.value) - parseFloat(d3.select(node).attr("r"))
+		else if attr.name == "r"
 			square.setAttribute "width", 2*parseFloat(attr.value)
 			square.setAttribute "height", 2*parseFloat(attr.value)
 		else square.setAttribute attr.name, attr.value
