@@ -1,11 +1,17 @@
+# compares whether two arrays contain the same values
+unorderedEquals = (arr1, arr2) ->
+	$(arr1).not(arr2).length == 0 && $(arr2).not(arr1).length == 0
+
 class VisConnector
 	constructor: () ->
 		chrome.runtime.onMessage.addListener (message, sender, sendResponse) =>
 			if message.type == "syn"
 				@initConnection(sender.tab.id)
-				@data = @processPayload(message.payload)
+				@dataSets = @processPayload(message.payload)
 				#@getMappings()
-				@tableView = new TableView(@data)
+				@tableViews = []
+				$.each @dataSets, (i, dataSet) =>
+					@tableViews.push (new TableView(dataSet, i))
 		
 	initConnection: (tabId) ->
 		@port = chrome.tabs.connect tabId, {name: 'd3annot'}
@@ -65,104 +71,123 @@ class VisConnector
 			return {"shape": [], "color": [], "stroke": [], \ 
 								"stroke-width": [] }
 		
+	findSchema: (data, d3Data, tagName) ->
+		thisSchema = Object.keys(d3Data)
+		thisSchema.push(tagName)
+		console.log data
+		console.log thisSchema
+		found = -1
+		$.each data, (i, dataSet) ->
+			if unorderedEquals(dataSet.schema, thisSchema)
+				found = i
+				return false
+		return found
+		
 	processPayload: (payload) =>
 		data = []
 		schema_count = -1
-		last_schema = []
+		console.log payload
 	
 		$.each payload, (i, obj) =>
 			d3Data = obj.d3Data
 			node = $(obj.nodeText)[0]
-		
-			# skip non-object data
-			unless d3Data instanceof Object
-				return true
-		
-			# check to see if we have a new schema	
-			$.each d3Data, (prop, val) =>
-				# if we find a property that isn't in our previous schema, create a new table.
-				unless prop in last_schema
-					# set up the number of elements for the last schema, before moving on
-					unless schema_count == -1
-						data[schema_count].numEls = data[schema_count][last_schema[0]].length
-					last_schema = Object.keys(d3Data)
+			schema = -1
+			
+			# object types require some schema thought
+			if d3Data instanceof Object
+				# check to see if we have a new schema	
+				schema = @findSchema(data, d3Data, node.tagName)
+				if schema == -1
+					# if we find a property that isn't in a previous schema, create a new table.
+					newSchema = Object.keys(d3Data)
 					# schema should also contain the tagname/shape
-					last_schema.push(node.tagName)
-					
+					newSchema.push(node.tagName)
 					schema_count++
-					data[schema_count] = {}
-				
+					schema = schema_count
+					data[schema] = {}
+					data[schema].schema = newSchema
 					# set the schema for data and visual attributes of this set
-					data[schema_count].d3Data = {}
+					data[schema].d3Data = {}
 					$.each Object.keys(d3Data), (j, key) ->
-						data[schema_count].d3Data[key] = []
+						data[schema].d3Data[key] = []
 						
-					data[schema_count].visData = @extractVisSchema(node)
-
-					return false;
-		
-			# now let's add the data item to our structure
-			$.each d3Data, (prop, val) ->
-				if data[schema_count].d3Data.hasOwnProperty(prop)
-					data[schema_count].d3Data[prop].push(val)
-				else
-					data[schema_count].d3Data[prop] = [val]
+					data[schema].visData = @extractVisSchema(node)
+						
+				# now let's add the data item to our structure
+				$.each d3Data, (prop, val) ->
+					if data[schema].d3Data.hasOwnProperty(prop)
+						data[schema].d3Data[prop].push(val)
+					else
+						data[schema].d3Data[prop] = [val]
+			
+			else
+				unless d3Data
+					return true
+				# we just have a scalar data element
+				schema_count++
+				schema = schema_count
+				data[schema] = {}
+				data[schema].schema = ["scalar"]
+				data[schema].d3Data = {"scalar": [d3Data]}
+				data[schema].visData = @extractVisSchema(node)
 		
 			# finally extract the visual attributes
 			visRow = @extractVisData(node, obj.cssText)
-			$.each Object.keys(data[schema_count].visData), (j, key) ->
-				data[schema_count].visData[key].push(visRow[key])
+			$.each Object.keys(data[schema].visData), (j, key) ->
+				data[schema].visData[key].push(visRow[key])
 		
 			# and add the node
-			if data[schema_count].hasOwnProperty('node')
-				data[schema_count]['node'].push(@prepareMarkForDisplay(node, obj.cssText));
+			if data[schema].hasOwnProperty('node')
+				data[schema]['node'].push(@prepareMarkForDisplay(node, obj.cssText));
 			else
-				data[schema_count]['node'] = [@prepareMarkForDisplay(node, obj.cssText)];
+				data[schema]['node'] = [@prepareMarkForDisplay(node, obj.cssText)];
 			
 		
-		data[schema_count].numEls = data[schema_count].d3Data[last_schema[0]].length
+		$.each data, (i, dataSet) ->
+			dataSet.numEls = dataSet.d3Data[dataSet.schema[0]].length
+			
 		return data
 	
 		
 class TableView
-	constructor: (data) ->
-		@buildTable(data)
+	constructor: (dataSet, @index) ->
+		@buildTable(dataSet)
 	
-	buildTable: (data) ->
-		# for each schema...
-		$.each data, (i, dataSet) ->
-			content_div = $ '<div class="container"></div>'
-			content = $ '<table id="example" class="display"></table>'
-			foot = $ '<tfoot></tfoot>'
-			head = $ '<thead></thead>'
+	buildTable: (dataSet) =>
+		content_div = $ '<div class="container"></div>'
+		content = $ "<table id=\"example#{@index}\" class=\"display\"></table>"
+		foot = $ '<tfoot></tfoot>'
+		head = $ '<thead></thead>'
 		
-			# build a table
-			hrow = $ '<tr></tr>'
-			for prop of dataSet.d3Data
-				th = $ '<th>' + prop + '</th>'
-				$(hrow).append th
-			for attr of dataSet.visData
-				th = $ '<th>' + attr + '</th>'
-				$(hrow).append th
+		# build a table
+		hrow = $ '<tr></tr>'
+		for prop of dataSet.d3Data
+			th = $ '<th>' + prop + '</th>'
+			$(hrow).append th
+		for attr of dataSet.visData
+			th = $ '<th>' + attr + '</th>'
+			$(hrow).append th
 			
-			# add a final header for the mark
+		# add a final header for the mark
+		unless dataSet['node'] == null
+			$(hrow).append $ '<th>Mark</th>'
+		
+		$(head).append hrow
+		$(content).append head
+		
+		for ind in [0..(dataSet.numEls-1)]
+			row = $ '<tr></tr>'
+			for prop of dataSet.d3Data
+				td = $ '<td>' + dataSet.d3Data[prop][ind] + '</td>'
+				$(row).append td
+				
+			for attr of dataSet.visData
+				td = $ '<td>' + dataSet.visData[attr][ind] + '</td>'
+				$(row).append td
+				
+			# add the mark
+			console.log dataSet
 			unless dataSet['node'] == null
-				$(hrow).append $ '<th>Mark</th>'
-		
-			$(head).append hrow
-			$(content).append head
-		
-			for ind in [0..(dataSet.numEls-1)]
-				row = $ '<tr></tr>'
-				for prop of dataSet.d3Data
-					td = $ '<td>' + dataSet.d3Data[prop][ind] + '</td>'
-					$(row).append td
-				
-				for attr of dataSet.visData
-					td = $ '<td>' + dataSet.visData[attr][ind] + '</td>'
-					$(row).append td
-				
-				# add the mark
 				unless dataSet['node'][ind] == null
 					td = $ '<td></td>'
 					svg = $ '<svg width="100" height="100"></svg>'
@@ -170,20 +195,20 @@ class TableView
 					$(td).append svg
 					$(row).append td
 			
-				$(content).append row
+			$(content).append row
 		
-			$(content).append foot
-			$(content_div).append content
-			$('body').append content_div
+		$(content).append foot
+		$(content_div).append content
+		$('body').append content_div
 		
-			dataTable = $('#example').dataTable({
-				"paging": false
-			});
-			$.each dataTable.fnSettings().aoColumns, (i, col) ->
-				dataTable.fnSettings().aoColumns[i].bSortable = false;
+		dataTable = $("#example#{@index}").dataTable({
+			"paging": false
+		});
+		$.each dataTable.fnSettings().aoColumns, (i, col) ->
+			dataTable.fnSettings().aoColumns[i].bSortable = false;
 			
-			$('svg').each () ->
-				$(@).html $(@).html()
+		$('svg').each () ->
+			$(@).html $(@).html()
 	
 
 ###
