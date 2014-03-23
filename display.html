@@ -1,10 +1,13 @@
 <html>
 <head>
-	<link rel="stylesheet" type="text/css" href="lib/css/jquery.dataTables.css">
+	<link rel="stylesheet" type="text/css" href="lib/css/jquery.dataTables_themeroller.css">
+	<link rel="stylesheet" type="text/css" href="lib/css/demo_table.css">
+	<link rel="stylesheet" type="text/css" href="display.css">
 	<script src="lib/d3.v3.min.js"></script>
+	<script src="lib/underscore-min.js"></script>
 	<script src="lib/jquery.js"></script>
 	<script src="lib/jquery.dataTables.js"></script>
-	<script src="lib/dataTables.colVis.js"></script>
+	<script src="lib/dataTables.apiPlugins.js"></script>
 	<script src="lib/jstat.js"></script>
 	<script src="display.js"></script>
 	<style type="text/css">
@@ -24,6 +27,11 @@
 	</style>
 </head>
 <body>
-<button id="circleTrans">Convert to Square</button>
+
+<div id="panel" class="controlPanel">
+<span id="panelButtons"><button id="changeMapping">Change Mapping</button> <button id="showMapping">Show Mappings</button></span>
+<div id="panelContent"></div>
+</div>
+
 </body>
 </html>

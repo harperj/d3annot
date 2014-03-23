@@ -120,8 +120,3 @@
 	   -moz-border-radius: 3px;
 	        border-radius: 3px;
 }
-
-#dt_example div.syntaxhighlighter code {
-	padding: 0 !important;
-}
-

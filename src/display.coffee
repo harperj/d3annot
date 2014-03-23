@@ -1,28 +1,102 @@
 # compares whether two arrays contain the same values
-unorderedEquals = (arr1, arr2) ->
-	$(arr1).not(arr2).length == 0 && $(arr2).not(arr1).length == 0
+unorderedEquals = (arr1, arr2) -> _.difference(arr1, arr2).length == 0
 
 class VisConnector
-	constructor: () ->
+	constructor: ->
 		chrome.runtime.onMessage.addListener (message, sender, sendResponse) =>
 			if message.type == "syn"
 				@initConnection(sender.tab.id)
 				@dataSets = @processPayload(message.payload)
-				#@getMappings()
 				@tableViews = []
 				$.each @dataSets, (i, dataSet) =>
-					@tableViews.push (new TableView(dataSet, i))
+					dataSet.dataTypes = @inferTypes(dataSet.d3Data)
+					dataSet.visTypes = @inferTypes(dataSet.visData)
+					dataSet.mappings = @getMappings(dataSet)
+					@tableViews.push(new TableView(dataSet, i))
 		
-	initConnection: (tabId) ->
+	initConnection: (tabId) =>
 		@port = chrome.tabs.connect tabId, {name: 'd3annot'}
+	
+	getDataSetTable: (dataSetId) =>
+		return @tableViews[dataSetId].dataTable
+	
+	getDataSetMappings: (dataSetId) =>
+		return @dataSets[dataSetId].mappings
+	
+	getMappings: (dataSet) =>
+		mappings = {}
+		for dataAttr of dataSet.d3Data
+			for visAttr of dataSet.visData
+				mapping = @getMapping(dataSet.dataTypes[dataAttr], dataSet.d3Data[dataAttr], \ 
+									dataSet.visTypes[visAttr], dataSet.visData[visAttr])
+				if mapping
+					console.log ("Found mapping between: " + dataAttr + " and " + visAttr)
+					if mappings.hasOwnProperty(dataAttr)
+						mappings[dataAttr].push(visAttr)
+					else
+						mappings[dataAttr] = [visAttr]
+		return mappings
+	
+	getMapping: (dataAttrType, dataAttrCol, visAttrType, visAttrCol) ->
+		if dataAttrType is "null" or visAttrType is "null"
+			# null data, don't even check
+			return false
+		else if not(dataAttrType is visAttrType) or 
+		(dataAttrType is "nominal")
+			# nominal
+			return @hasMappingNominal(dataAttrCol, visAttrCol)
+		else
+			# quantitative/numeric
+			return @hasMappingNumeric(dataAttrCol, visAttrCol) || @hasMappingNominal(dataAttrCol, visAttrCol)
+			
+	hasMappingNominal: (col1, col2) ->
+		mapping = {}
+		for row1, index in col1
+			if mapping.hasOwnProperty(row1)
+				mapping[row1].push(col2[index])
+			else
+				mapping[row1] = [col2[index]]
+		for val of mapping
+			mapping[val] = _.uniq(mapping[val])
+			if mapping[val].length > 1
+				return false
+		mappedVals = _.flatten(_.values(mapping))
+		if _.uniq(mappedVals).length < mappedVals.length
+			return false
+		return true
+	
+	hasMappingNumeric: (col1, col2) ->
+		corrcoeff = jStat.corrcoeff(col1, col2)
+		col1 = _.map(col1, (v) -> parseFloat(v))
+		col2 = _.map(col2, (v) -> parseFloat(v))
+		if jStat.stdev(col1) is 0 or jStat.stdev(col2) is 0
+			return false
+		if corrcoeff > 0.99 and not(isNaN(corrcoeff))
+			return true
+		return false
+			
+	inferTypes: (dataObj) ->
+		dataTypes = {}
+		for dataAttr of dataObj
+			dataTypes[dataAttr] = @inferDataColType(dataObj[dataAttr])
+		return dataTypes
 		
-	getMappings: () =>
-		$.each @data[0].visAttr, (i, visAttr) =>
-			$.each @data[0].d3Schema, (j, dataAttr) =>
-				console.log "(#{visAttr} - #{dataAttr})"
-		
-	circleTrans: () =>
-		console.log "sending msg"
+	inferDataColType: (colData) ->
+		isNum = true
+		isNull = true
+		for row in colData
+			if row
+				isNull = false
+			if isNaN(parseFloat(row))
+				isNum = false
+		if isNum
+			return "numeric"
+		else if isNull
+			return "null"
+		else
+			return "nominal"
+				
+	circleTrans: =>
 		@port.postMessage {type: "circleTrans"}
 		
 	prepareMarkForDisplay: (node, cssText) ->
@@ -43,7 +117,7 @@ class VisConnector
 		$.each node.attributes, (j, attr) ->
 			nodeAttrs[attr.name] = attr.value
 		
-		visRow["shape"] = node.tagName.toLowerCase();
+		visRow["shape"] = node.tagName.toLowerCase()
 		visRow["color"] = nodeAttrs["fill"]
 		visRow["stroke"] = nodeAttrs["stroke"]
 		visRow["stroke-width"] = nodeAttrs["stroke-width"]
@@ -60,7 +134,7 @@ class VisConnector
 		
 	# This is a little hacky -- perhaps think about it a bit more later
 	extractVisSchema: (node) ->
-		shape = node.tagName.toLowerCase();
+		shape = node.tagName.toLowerCase()
 		if shape == "circle"
 			return {"shape": [], "color": [], "stroke": [], \ 
 								"stroke-width": [], "radius": []}
@@ -74,8 +148,6 @@ class VisConnector
 	findSchema: (data, d3Data, tagName) ->
 		thisSchema = Object.keys(d3Data)
 		thisSchema.push(tagName)
-		console.log data
-		console.log thisSchema
 		found = -1
 		$.each data, (i, dataSet) ->
 			if unorderedEquals(dataSet.schema, thisSchema)
@@ -86,7 +158,6 @@ class VisConnector
 	processPayload: (payload) =>
 		data = []
 		schema_count = -1
-		console.log payload
 	
 		$.each payload, (i, obj) =>
 			d3Data = obj.d3Data
@@ -138,9 +209,9 @@ class VisConnector
 		
 			# and add the node
 			if data[schema].hasOwnProperty('node')
-				data[schema]['node'].push(@prepareMarkForDisplay(node, obj.cssText));
+				data[schema]['node'].push(@prepareMarkForDisplay(node, obj.cssText))
 			else
-				data[schema]['node'] = [@prepareMarkForDisplay(node, obj.cssText)];
+				data[schema]['node'] = [@prepareMarkForDisplay(node, obj.cssText)]
 			
 		
 		$.each data, (i, dataSet) ->
@@ -154,62 +225,68 @@ class TableView
 		@buildTable(dataSet)
 	
 	buildTable: (dataSet) =>
-		content_div = $ '<div class="container"></div>'
-		content = $ "<table id=\"example#{@index}\" class=\"display\"></table>"
-		foot = $ '<tfoot></tfoot>'
-		head = $ '<thead></thead>'
+		content_div = $("<div id=\"content#{@index}\" class=\"container\"></div>")
+		content = $("<table id=\"table#{@index}\" class=\"display\"></table>")
+		foot = $('<tfoot></tfoot>')
+		head = $('<thead></thead>')
 		
 		# build a table
-		hrow = $ '<tr></tr>'
+		hrow = $('<tr></tr>')
 		for prop of dataSet.d3Data
-			th = $ '<th>' + prop + '</th>'
-			$(hrow).append th
+			th = $("<th> #{prop} </th>")
+			$(hrow).append(th)
 		for attr of dataSet.visData
-			th = $ '<th>' + attr + '</th>'
-			$(hrow).append th
+			th = $("<th> #{attr} </th>")
+			$(hrow).append(th)
 			
 		# add a final header for the mark
-		unless dataSet['node'] == null
-			$(hrow).append $ '<th>Mark</th>'
+		if dataSet['node']
+			mark = $('<th>Mark</th>')
+			$(hrow).append(mark)
 		
-		$(head).append hrow
-		$(content).append head
+		$(head).append(hrow)
+		$(content).append(head)
 		
 		for ind in [0..(dataSet.numEls-1)]
-			row = $ '<tr></tr>'
+			row = $('<tr></tr>')
 			for prop of dataSet.d3Data
-				td = $ '<td>' + dataSet.d3Data[prop][ind] + '</td>'
-				$(row).append td
+				td = $('<td>' + dataSet.d3Data[prop][ind] + '</td>')
+				$(row).append(td)
 				
 			for attr of dataSet.visData
-				td = $ '<td>' + dataSet.visData[attr][ind] + '</td>'
+				td = $('<td>' + dataSet.visData[attr][ind] + '</td>')
 				$(row).append td
 				
 			# add the mark
-			console.log dataSet
-			unless dataSet['node'] == null
-				unless dataSet['node'][ind] == null
-					td = $ '<td></td>'
-					svg = $ '<svg width="100" height="100"></svg>'
-					$(svg).append dataSet['node'][ind]
-					$(td).append svg
-					$(row).append td
+			if dataSet['node']
+				if dataSet['node'][ind]
+					td = $('<td></td>')
+					svg = $('<svg width="100" height="100"></svg>')
+					$(svg).append(dataSet['node'][ind])
+					$(td).append(svg)
+					$(row).append(td)
 			
-			$(content).append row
+			$(content).append(row)
 		
-		$(content).append foot
-		$(content_div).append content
-		$('body').append content_div
+		$(content).append(foot)
+		$(content_div).append(content)
+		$('body').append(content_div)
 		
-		dataTable = $("#example#{@index}").dataTable({
-			"paging": false
-		});
-		$.each dataTable.fnSettings().aoColumns, (i, col) ->
-			dataTable.fnSettings().aoColumns[i].bSortable = false;
+		@dataTable = $("#table#{@index}").dataTable 
+			"bPaginate": false
+		
+		$("#table#{@index} tr").click ->
+			$(this).toggleClass('row_selected')
+			
 			
 		$('svg').each () ->
 			$(@).html $(@).html()
 	
+	buildControlPanel: () ->
+		panel = $("<div id=\"panel#{@index}\" class=\"controlPanel\"></div>")
+		changeMappingButton = $("<button class=\"changeMapping\">Change Mapping</button>")
+		
+		panel.append()
 
 ###
  * Converts an RGB color value to HSL. Conversion formula
@@ -249,28 +326,100 @@ rgbToHsl = (r, g, b) ->
 	return [h, s, l]
 
 hexToRgb = (hexString) ->
-	if (typeof hexString) != "string"
+	if typeof(hexString) != "string"
 		console.error "Got incorrect type in hexToRgb"
 		return null
 		
 	if hexString.charAt(0) == "#"
-		hexString = (hexString.substring 1, 7)
+		hexString = hexString.substring(1, 7)
 	
 	if hexString.length == 3
 		hexString = hexString[0] + hexString[0] \
 			+ hexString[1] + hexString[1] \
 			+ hexString[2] + hexString[2]
 	
-	r = (parseInt (hexString.substring 0, 2), 16)
-	g = (parseInt (hexString.substring 2, 4), 16)
-	b = (parseInt (hexString.substring 4, 6), 16)
+	r = parseInt(hexString.substring(0, 2), 16)
+	g = parseInt(hexString.substring(2, 4), 16)
+	b = parseInt(hexString.substring(4, 6), 16)
 	return [r, g, b]
 		
-window.hexToRgb = hexToRgb
+isHexColorString = (hexString) ->
+	rgb = hexToRgb(hexString)
+	if rgb
+		if rgb[0] and rgb[1] and rgb[2]
+			return true
+	false
 
 
-($ document).ready () ->
+class RemappingForm
+	constructor: (@connector, @tableId, @panel) ->
+		@dataTable = @connector.tableViews[@tableId].dataTable
+		@dataSet = @connector.dataSets[@tableId]
+		@panel.empty()
+		[@form, @colSelector] = @buildForm()
+		@colSelector.on 'change', => @buildValChanger()
+		
+	buildForm: =>
+		colNames = Object.keys(@dataSet.visData)
+		$form = $('<form />')
+		colSelect = $('<select />')
+		colSelectSpan = $('<span />').text("Selected visual attribute: ")
+		for colName in colNames
+			colOption = $("<option />").attr('value', colName).text(colName)
+			colSelect.append(colOption)
+	  colSelectSpan.append(colSelect)
+		$form.append(colSelectSpan)
+		@panel.empty()
+		@panel.append($form)
+		return [$form, colSelect]
+		
+	buildValChanger: =>
+		console.log('building val changer')
+		console.log(@dataTable)
+		rows = []
+		if $('tr.row_selected').length > 0
+			rows = @dataTable._('tr.row_selected')
+		else
+			rows = @dataTable._('tr')
+			
+		col = @dataTable.fnGetColumnIndex($(@colSelector).val())
+		values = []
+		$.each rows, (i, row) ->
+			values.push(row[col])
+		values = _.uniq(values)
+		values = JSON.stringify(values)
+		frmText = $('<div />').addClass('formtext')
+		frmText.text("Values found: #{values}")
+		newDataInput = $('<input type="text" name="input" value="2">')
+		newDataSubmit = $('<button type="button" />').text("Submit")
+		$(newDataSubmit).on 'click', =>
+			@connector.circleTrans()
+			
+		newValChanger = $('<div />')
+		newValChanger.append(frmText)
+		newValChanger.append(newDataInput)
+		newValChanger.append(newDataSubmit)
+		console.log "about to update valchanger"
+		if @valChanger
+			newValChanger.replaceAll(@valChanger)
+			@valChanger = newValChanger
+		else
+			@valChanger = newValChanger
+			@form.append(@valChanger)
+	
+	
+		
+
+$(document).ready () ->
 	connector = new VisConnector()
-	($ '#circleTrans').on 'click', () ->
-		console.log(connector);
-		connector.circleTrans()
+	remappingForm = null
+	window.connector = connector
+	$('#showMapping').on 'click', () ->
+		console.log connector.tableViews[0]
+		mappings = connector.getDataSetMappings(0)
+		$("#panelContent").text(JSON.stringify(connector.getDataSetMappings(0)))
+		
+	$('#changeMapping').on 'click', () ->
+		tableView = connector.tableViews[0]
+		dataSet = connector.dataSets[0]
+		remappingForm = new RemappingForm(connector, 0, $('#panelContent'))
