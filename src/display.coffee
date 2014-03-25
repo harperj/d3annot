@@ -12,7 +12,11 @@ class VisConnector
 					dataSet.dataTypes = @inferTypes(dataSet.d3Data)
 					dataSet.visTypes = @inferTypes(dataSet.visData)
 					dataSet.mappings = @getMappings(dataSet)
-					@tableViews.push(new TableView(dataSet, i))
+				
+				angularScope = angular.element($('body')).scope()
+				angularScope.$apply =>
+					angularScope.mappings = @dataSets[0].mappings
+					angularScope.dataSets = @dataSets
 		
 	initConnection: (tabId) =>
 		@port = chrome.tabs.connect tabId, {name: 'd3annot'}
@@ -219,74 +223,6 @@ class VisConnector
 			
 		return data
 	
-		
-class TableView
-	constructor: (dataSet, @index) ->
-		@buildTable(dataSet)
-	
-	buildTable: (dataSet) =>
-		content_div = $("<div id=\"content#{@index}\" class=\"container\"></div>")
-		content = $("<table id=\"table#{@index}\" class=\"display\"></table>")
-		foot = $('<tfoot></tfoot>')
-		head = $('<thead></thead>')
-		
-		# build a table
-		hrow = $('<tr></tr>')
-		for prop of dataSet.d3Data
-			th = $("<th> #{prop} </th>")
-			$(hrow).append(th)
-		for attr of dataSet.visData
-			th = $("<th> #{attr} </th>")
-			$(hrow).append(th)
-			
-		# add a final header for the mark
-		if dataSet['node']
-			mark = $('<th>Mark</th>')
-			$(hrow).append(mark)
-		
-		$(head).append(hrow)
-		$(content).append(head)
-		
-		for ind in [0..(dataSet.numEls-1)]
-			row = $('<tr></tr>')
-			for prop of dataSet.d3Data
-				td = $('<td>' + dataSet.d3Data[prop][ind] + '</td>')
-				$(row).append(td)
-				
-			for attr of dataSet.visData
-				td = $('<td>' + dataSet.visData[attr][ind] + '</td>')
-				$(row).append td
-				
-			# add the mark
-			if dataSet['node']
-				if dataSet['node'][ind]
-					td = $('<td></td>')
-					svg = $('<svg width="100" height="100"></svg>')
-					$(svg).append(dataSet['node'][ind])
-					$(td).append(svg)
-					$(row).append(td)
-			
-			$(content).append(row)
-		
-		$(content).append(foot)
-		$(content_div).append(content)
-		$('body').append(content_div)
-		
-		@dataTable = $("#table#{@index}").dataTable 
-			"bPaginate": false
-		
-		$("#table#{@index} tr").click ->
-			$(this).toggleClass('row_selected')
-			
-			
-		$('svg').each () ->
-			$(@).html $(@).html()
-	
-	buildControlPanel: () ->
-		panel = $("<div id=\"panel#{@index}\" class=\"controlPanel\"></div>")
-		changeMappingButton = $("<button class=\"changeMapping\">Change Mapping</button>")
-		
-		panel.append()
 
 ###
  * Converts an RGB color value to HSL. Conversion formula
@@ -351,75 +287,118 @@ isHexColorString = (hexString) ->
 	false
 
 
-class RemappingForm
-	constructor: (@connector, @tableId, @panel) ->
-		@dataTable = @connector.tableViews[@tableId].dataTable
-		@dataSet = @connector.dataSets[@tableId]
-		@panel.empty()
-		[@form, @colSelector] = @buildForm()
-		@colSelector.on 'change', => @buildValChanger()
-		
-	buildForm: =>
-		colNames = Object.keys(@dataSet.visData)
-		$form = $('<form />')
-		colSelect = $('<select />')
-		colSelectSpan = $('<span />').text("Selected visual attribute: ")
-		for colName in colNames
-			colOption = $("<option />").attr('value', colName).text(colName)
-			colSelect.append(colOption)
-	  colSelectSpan.append(colSelect)
-		$form.append(colSelectSpan)
-		@panel.empty()
-		@panel.append($form)
-		return [$form, colSelect]
-		
-	buildValChanger: =>
-		console.log('building val changer')
-		console.log(@dataTable)
-		rows = []
-		if $('tr.row_selected').length > 0
-			rows = @dataTable._('tr.row_selected')
-		else
-			rows = @dataTable._('tr')
-			
-		col = @dataTable.fnGetColumnIndex($(@colSelector).val())
-		values = []
-		$.each rows, (i, row) ->
-			values.push(row[col])
-		values = _.uniq(values)
-		values = JSON.stringify(values)
-		frmText = $('<div />').addClass('formtext')
-		frmText.text("Values found: #{values}")
-		newDataInput = $('<input type="text" name="input" value="2">')
-		newDataSubmit = $('<button type="button" />').text("Submit")
-		$(newDataSubmit).on 'click', =>
-			@connector.circleTrans()
-			
-		newValChanger = $('<div />')
-		newValChanger.append(frmText)
-		newValChanger.append(newDataInput)
-		newValChanger.append(newDataSubmit)
-		console.log "about to update valchanger"
-		if @valChanger
-			newValChanger.replaceAll(@valChanger)
-			@valChanger = newValChanger
-		else
-			@valChanger = newValChanger
-			@form.append(@valChanger)
+getMappings = (dataSet) ->
+	mappings = {}
+	for dataAttr of dataSet.d3Data
+		for visAttr of dataSet.visData
+			mapping = getMapping(dataSet.dataTypes[dataAttr], dataSet.d3Data[dataAttr], \ 
+								dataSet.visTypes[visAttr], dataSet.visData[visAttr])
+			if mapping
+				console.log ("Found mapping between: " + dataAttr + " and " + visAttr)
+				if mappings.hasOwnProperty(dataAttr)
+					mappings[dataAttr].push(visAttr)
+				else
+					mappings[dataAttr] = [visAttr]
+	return mappings
 	
+getMapping = (dataAttrType, dataAttrCol, visAttrType, visAttrCol) ->
+	if dataAttrType is "null" or visAttrType is "null"
+		# null data, don't even check
+		return false
+	else if not(dataAttrType is visAttrType) or 
+	(dataAttrType is "nominal")
+		# nominal
+		return hasMappingNominal(dataAttrCol, visAttrCol)
+	else
+		# quantitative/numeric
+		return hasMappingNumeric(dataAttrCol, visAttrCol) or hasMappingNominal(dataAttrCol, visAttrCol)
+			
+hasMappingNominal = (col1, col2) ->
+	mapping = {}
+	for row1, index in col1
+		if mapping.hasOwnProperty(row1)
+			mapping[row1].push(col2[index])
+		else
+			mapping[row1] = [col2[index]]
+	for val of mapping
+		mapping[val] = _.uniq(mapping[val])
+		if mapping[val].length > 1
+			return false
+	mappedVals = _.flatten(_.values(mapping))
+	if _.uniq(mappedVals).length < mappedVals.length
+		return false
+	return true
 	
-		
+hasMappingNumeric = (col1, col2) ->
+	corrcoeff = jStat.corrcoeff(col1, col2)
+	col1 = _.map(col1, (v) -> parseFloat(v))
+	col2 = _.map(col2, (v) -> parseFloat(v))
+	if jStat.stdev(col1) is 0 or jStat.stdev(col2) is 0
+		return false
+	if corrcoeff > 0.99 and not(isNaN(corrcoeff))
+		return true
+	return false
 
+getSelectedSet = (dataSet) ->
+	newDataSet = $.extend(true, {}, dataSet)
+	for key of newDataSet.d3Data
+		newList = []
+		for sel in newDataSet.selections
+			newList.push(newDataSet.d3Data[key][sel])
+		newDataSet.d3Data[key] = newList
+	
+	for key of newDataSet.visData
+		newList = []
+		for sel in newDataSet.selections
+			newList.push(newDataSet.visData[key][sel])
+		newDataSet.visData[key] = newList
+	
+	return newDataSet
+
+restylingApp = angular.module('restylingApp', [])
+
+restylingApp.controller 'MappingListCtrl', ($scope) ->
+	$scope._ = _
+	$scope.mappings = 
+		'dataAttr1': ['visAttr1', 'visAttr3']
+		'dataAttr2': ['visAttr2']
+	$scope.currentDataSet = 0
+	
+	$scope.getMappings = ->
+		if (not $scope.dataSets[$scope.currentDataSet].selections) or 
+				$scope.dataSets[$scope.currentDataSet].selections.length == 0
+			console.log $scope.dataSets[$scope.currentDataSet]
+			$scope.mappings = getMappings($scope.dataSets[$scope.currentDataSet])
+		else
+			selectedSet = getSelectedSet($scope.dataSets[$scope.currentDataSet])
+			$scope.mappings = getMappings(selectedSet)
+	
+	$scope.toggleSelect = (dataSetIndex, elemIndex) ->
+		if not $scope.dataSets[dataSetIndex].selections
+			$scope.dataSets[dataSetIndex].selections = [elemIndex]
+		else
+			if elemIndex in $scope.dataSets[dataSetIndex].selections
+				$scope.dataSets[dataSetIndex].selections = _.without($scope.dataSets[dataSetIndex].selections, elemIndex)
+			else
+				$scope.dataSets[dataSetIndex].selections.push(elemIndex)
+		$scope.getMappings()
+		
+	$scope.itemClass = (dataSetIndex, elemIndex) ->
+		if not $scope.dataSets[dataSetIndex].hasOwnProperty('selections')
+			return undefined
+			
+		if elemIndex in $scope.dataSets[dataSetIndex].selections
+			return 'selected'
+		return undefined
+
+restylingApp.directive 'svgInject', ($compile) ->
+	return link: (scope, element, attrs, controller) ->
+		svg = angular.element('<svg width="100" height="100"></svg>')
+		svg.append(scope.dataSet['node'][scope.i])
+		element.append(svg)
+		angular.element(element).html(angular.element(element).html())
+		
 $(document).ready () ->
 	connector = new VisConnector()
 	remappingForm = null
 	window.connector = connector
-	$('#showMapping').on 'click', () ->
-		console.log connector.tableViews[0]
-		mappings = connector.getDataSetMappings(0)
-		$("#panelContent").text(JSON.stringify(connector.getDataSetMappings(0)))
-		
-	$('#changeMapping').on 'click', () ->
-		tableView = connector.tableViews[0]
-		dataSet = connector.dataSets[0]
-		remappingForm = new RemappingForm(connector, 0, $('#panelContent'))

@@ -45,7 +45,8 @@
 "http://nlpviz.bpodgursky.com/home",
 "http://data.karmi.cz/d3/life-expectancy-slopegraph-normalized/",
 "http://data.karmi.cz/d3/life-expectancy-panel-chart/",
-"http://www.nytimes.com/interactive/2013/08/02/sports/baseball/bang-for-your-buck.html"],
+"http://www.nytimes.com/interactive/2013/08/02/sports/baseball/bang-for-your-buck.html",
+"http://www.nytimes.com/interactive/2013/09/24/us/health-care-premiums.html"],
 			"css": ["content.css"],
 			"js": ["lib/d3.v3.min.js", "lib/jquery.js", "main_content.js", "lib/FileSaver.js"]
 		}

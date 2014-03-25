@@ -1,36 +1,45 @@
-<html>
+<!doctype html>
+<html lang="en" ng-app="restylingApp">
 <head>
-	<link rel="stylesheet" type="text/css" href="lib/css/jquery.dataTables_themeroller.css">
-	<link rel="stylesheet" type="text/css" href="lib/css/demo_table.css">
-	<link rel="stylesheet" type="text/css" href="display.css">
+	<meta charset="utf-8">
+	<title>D3 Deconstructor</title>	
+	
+	<link rel="stylesheet" type="text/css" href="display.css" />
+	<link rel="stylesheet" type="text/css" href="lib/bootstrap/css/bootstrap.min.css" />
+	<link rel="stylesheet" type="text/css" href="lib/bootstrap/css/bootstrap-theme.min.css" />
+	<link rel="stylesheet" type="text/css" href="lib/ng-table.css" />
+	<script src="lib/angular.min.js"></script>
+	<script src="lib/ng-table.js"></script>
 	<script src="lib/d3.v3.min.js"></script>
 	<script src="lib/underscore-min.js"></script>
 	<script src="lib/jquery.js"></script>
+	<script src="lib/bootstrap/js/bootstrap.min.js"></script>
 	<script src="lib/jquery.dataTables.js"></script>
 	<script src="lib/dataTables.apiPlugins.js"></script>
 	<script src="lib/jstat.js"></script>
 	<script src="display.js"></script>
-	<style type="text/css">
-	body {
-		font: 90%/1.45em "Helvetica Neue", HelveticaNeue, Verdana, Arial, Helvetica, sans-serif;
-		margin: 0;
-		padding: 0;
-		color: #333;
-		background-color: #fff;
-	}
-
-
-	div.container {
-		min-width: 600px;
-		margin: 0 auto;
-	}
-	</style>
 </head>
-<body>
+<body ng-controller="MappingListCtrl">
 
 <div id="panel" class="controlPanel">
-<span id="panelButtons"><button id="changeMapping">Change Mapping</button> <button id="showMapping">Show Mappings</button></span>
-<div id="panelContent"></div>
+<ul>
+	<li ng-repeat="(key, val) in mappings">Mapping: {{key}}, {{val}}</li>
+</ul>
+</div>
+
+<div ng-repeat="dataSet in dataSets">
+	<table class="table">
+		<thead>
+			<tr>
+				<th ng-repeat="(prop, val) in dataSet.d3Data">{{prop}}</th>
+				<th>Mark</th>
+			</tr>
+		</thead>
+		<tr ng-repeat="i in _.range(0, dataSet.numEls)" ng-click="toggleSelect($parent.$index, i)" ng-class="itemClass($parent.$index, i)">
+			<td ng-repeat="(prop, val) in dataSet.d3Data">{{val[i]}}</td>
+			<td svg-inject></td>
+		</tr>
+	</table>
 </div>
 
 </body>
