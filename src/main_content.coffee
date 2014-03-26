@@ -14,10 +14,10 @@ class VisRemapper
 	
 	displayResponse: (msg) ->
 		console.log msg
-		if msg.type == "circleTrans"
-			$('circle').each ->
-				$(this).parent().append(createReplacement(this))
-				$(this).hide()
+		if msg.type == "update"
+			evt = document.createEvent "CustomEvent"
+			evt.initCustomEvent("visUpdateEvent", true, true, msg)
+			document.dispatchEvent(evt)
 		  
 		
 

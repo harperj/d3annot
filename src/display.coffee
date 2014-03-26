@@ -8,76 +8,28 @@ class VisConnector
 				@initConnection(sender.tab.id)
 				@dataSets = @processPayload(message.payload)
 				@tableViews = []
+				console.log @dataSets
 				$.each @dataSets, (i, dataSet) =>
 					dataSet.dataTypes = @inferTypes(dataSet.d3Data)
 					dataSet.visTypes = @inferTypes(dataSet.visData)
-					dataSet.mappings = @getMappings(dataSet)
-				
+					dataSet.mappings = getMappings(dataSet)
 				angularScope = angular.element($('body')).scope()
 				angularScope.$apply =>
-					angularScope.mappings = @dataSets[0].mappings
+					angularScope.mappings = getMappings(@dataSets[0])
 					angularScope.dataSets = @dataSets
 		
 	initConnection: (tabId) =>
 		@port = chrome.tabs.connect tabId, {name: 'd3annot'}
+	
+	sendUpdate: (message) =>
+		console.log message
+		@port.postMessage(message)
 	
 	getDataSetTable: (dataSetId) =>
 		return @tableViews[dataSetId].dataTable
 	
 	getDataSetMappings: (dataSetId) =>
 		return @dataSets[dataSetId].mappings
-	
-	getMappings: (dataSet) =>
-		mappings = {}
-		for dataAttr of dataSet.d3Data
-			for visAttr of dataSet.visData
-				mapping = @getMapping(dataSet.dataTypes[dataAttr], dataSet.d3Data[dataAttr], \ 
-									dataSet.visTypes[visAttr], dataSet.visData[visAttr])
-				if mapping
-					console.log ("Found mapping between: " + dataAttr + " and " + visAttr)
-					if mappings.hasOwnProperty(dataAttr)
-						mappings[dataAttr].push(visAttr)
-					else
-						mappings[dataAttr] = [visAttr]
-		return mappings
-	
-	getMapping: (dataAttrType, dataAttrCol, visAttrType, visAttrCol) ->
-		if dataAttrType is "null" or visAttrType is "null"
-			# null data, don't even check
-			return false
-		else if not(dataAttrType is visAttrType) or 
-		(dataAttrType is "nominal")
-			# nominal
-			return @hasMappingNominal(dataAttrCol, visAttrCol)
-		else
-			# quantitative/numeric
-			return @hasMappingNumeric(dataAttrCol, visAttrCol) || @hasMappingNominal(dataAttrCol, visAttrCol)
-			
-	hasMappingNominal: (col1, col2) ->
-		mapping = {}
-		for row1, index in col1
-			if mapping.hasOwnProperty(row1)
-				mapping[row1].push(col2[index])
-			else
-				mapping[row1] = [col2[index]]
-		for val of mapping
-			mapping[val] = _.uniq(mapping[val])
-			if mapping[val].length > 1
-				return false
-		mappedVals = _.flatten(_.values(mapping))
-		if _.uniq(mappedVals).length < mappedVals.length
-			return false
-		return true
-	
-	hasMappingNumeric: (col1, col2) ->
-		corrcoeff = jStat.corrcoeff(col1, col2)
-		col1 = _.map(col1, (v) -> parseFloat(v))
-		col2 = _.map(col2, (v) -> parseFloat(v))
-		if jStat.stdev(col1) is 0 or jStat.stdev(col2) is 0
-			return false
-		if corrcoeff > 0.99 and not(isNaN(corrcoeff))
-			return true
-		return false
 			
 	inferTypes: (dataObj) ->
 		dataTypes = {}
@@ -112,7 +64,11 @@ class VisConnector
 			d3.select(node).attr "cx", 50
 			d3.select(node).attr "cy", 50
 			return node
-		return null
+		else
+			d3.select(node).attr "x", "0"
+			d3.select(node).attr "y", "0"
+			d3.select(node).attr "transform", ""
+			return node
 		
 	# How will we handle nonexistant fields?
 	extractVisData: (node, cssText) ->
@@ -216,7 +172,11 @@ class VisConnector
 				data[schema]['node'].push(@prepareMarkForDisplay(node, obj.cssText))
 			else
 				data[schema]['node'] = [@prepareMarkForDisplay(node, obj.cssText)]
-			
+		
+			if data[schema].hasOwnProperty('ids')
+				data[schema]['ids'].push(obj.id)
+			else
+				data[schema]['ids'] = [obj.id]
 		
 		$.each data, (i, dataSet) ->
 			dataSet.numEls = dataSet.d3Data[dataSet.schema[0]].length
@@ -291,35 +251,47 @@ getMappings = (dataSet) ->
 	mappings = {}
 	for dataAttr of dataSet.d3Data
 		for visAttr of dataSet.visData
-			mapping = getMapping(dataSet.dataTypes[dataAttr], dataSet.d3Data[dataAttr], \ 
-								dataSet.visTypes[visAttr], dataSet.visData[visAttr])
+			mapping = getMapping(dataAttr, visAttr, dataSet)
 			if mapping
 				console.log ("Found mapping between: " + dataAttr + " and " + visAttr)
 				if mappings.hasOwnProperty(dataAttr)
-					mappings[dataAttr].push(visAttr)
+					mappings[dataAttr].push([visAttr, mapping])
 				else
-					mappings[dataAttr] = [visAttr]
+					mappings[dataAttr] = [[visAttr, mapping]]
 	return mappings
 	
-getMapping = (dataAttrType, dataAttrCol, visAttrType, visAttrCol) ->
+getMapping = (dataAttr, visAttr, dataSet) ->
+	dataAttrType = dataSet.dataTypes[dataAttr]
+	visAttrType = dataSet.visTypes[visAttr]
+	dataAttrCol = dataSet.d3Data[dataAttr]
+	visAttrCol = dataSet.visData[visAttr]
 	if dataAttrType is "null" or visAttrType is "null"
 		# null data, don't even check
 		return false
 	else if not(dataAttrType is visAttrType) or 
 	(dataAttrType is "nominal")
 		# nominal
-		return hasMappingNominal(dataAttrCol, visAttrCol)
+		return getMappingNominal(dataAttrCol, visAttrCol, dataSet['ids'])
 	else
 		# quantitative/numeric
-		return hasMappingNumeric(dataAttrCol, visAttrCol) or hasMappingNominal(dataAttrCol, visAttrCol)
+		num = getMappingNumeric(dataAttrCol, visAttrCol)
+		if num
+			num.ids = dataSet['ids']
+			return num
+		else 
+			return getMappingNominal(dataAttrCol, visAttrCol, dataSet['ids'])
+	return null
 			
-hasMappingNominal = (col1, col2) ->
+getMappingNominal = (col1, col2, ids) ->
 	mapping = {}
+	mapping_ids = {}
 	for row1, index in col1
 		if mapping.hasOwnProperty(row1)
 			mapping[row1].push(col2[index])
+			mapping_ids[row1].push(ids[index])
 		else
 			mapping[row1] = [col2[index]]
+			mapping_ids[row1] = [ids[index]]
 	for val of mapping
 		mapping[val] = _.uniq(mapping[val])
 		if mapping[val].length > 1
@@ -327,16 +299,35 @@ hasMappingNominal = (col1, col2) ->
 	mappedVals = _.flatten(_.values(mapping))
 	if _.uniq(mappedVals).length < mappedVals.length
 		return false
-	return true
+	for attr of mapping
+		mapping[attr] = [mapping[attr], mapping_ids[attr]]
+	return mapping
 	
-hasMappingNumeric = (col1, col2) ->
-	corrcoeff = jStat.corrcoeff(col1, col2)
+hasMappingNominal = (col1, col2) ->
+	return if getMappingNominal(col1, col2) then true else false
+	
+getMappingNumeric = (col1, col2) ->
+	mapping = {}
 	col1 = _.map(col1, (v) -> parseFloat(v))
 	col2 = _.map(col2, (v) -> parseFloat(v))
+	zipped = _.zip(col1, col2)
+	linear_regression_line = ss.linear_regression().data(zipped).line()
+	rSquared = ss.r_squared(zipped, linear_regression_line)
+	console.log rSquared	
 	if jStat.stdev(col1) is 0 or jStat.stdev(col2) is 0
 		return false
-	if corrcoeff > 0.99 and not(isNaN(corrcoeff))
-		return true
+	if rSquared > 0.97 and not(isNaN(rSquared))
+		console.log "NUMERIC!"
+		mapping.dataMin = _.min(col1)
+		mapping.dataMinIndex = col1.indexOf(mapping.dataMin)
+		mapping.dataMax = _.max(col1)
+		mapping.dataMaxIndex = col1.indexOf(mapping.dataMax)
+		mapping.visMin = _.min(col2)
+		mapping.visMinIndex = col2.indexOf(mapping.visMin)
+		mapping.visMax = _.max(col2)
+		mapping.visMaxIndex = col2.indexOf(mapping.visMax)
+		mapping.isNumericMapping = true
+		return mapping
 	return false
 
 getSelectedSet = (dataSet) ->
@@ -346,32 +337,71 @@ getSelectedSet = (dataSet) ->
 		for sel in newDataSet.selections
 			newList.push(newDataSet.d3Data[key][sel])
 		newDataSet.d3Data[key] = newList
-	
 	for key of newDataSet.visData
 		newList = []
 		for sel in newDataSet.selections
 			newList.push(newDataSet.visData[key][sel])
 		newDataSet.visData[key] = newList
-	
+	for id in newDataSet['ids']
+		newList = []
+		for sel in newDataSet.selections
+			newList.push(newDataSet['ids'][sel])
+		newDataSet['ids'][key] = newList
 	return newDataSet
 
 restylingApp = angular.module('restylingApp', [])
 
 restylingApp.controller 'MappingListCtrl', ($scope) ->
 	$scope._ = _
-	$scope.mappings = 
-		'dataAttr1': ['visAttr1', 'visAttr3']
-		'dataAttr2': ['visAttr2']
 	$scope.currentDataSet = 0
 	
+	$scope.submitLinearMappingChange = ($event, dataAttr, mapping) ->
+		if $event.keyCode is 13
+			newMin = [mapping[1].dataMin, parseFloat(mapping[1].visMin)]
+			newMax = [mapping[1].dataMax, parseFloat(mapping[1].visMax)]
+			regression = ss.linear_regression().data([newMin, newMax])
+			line = regression.line()
+			console.log regression.b()
+			console.log regression.m()
+			console.log [newMin, newMax]
+			currDataSet = $scope.dataSets[$scope.currentDataSet]
+			for id in mapping[1].ids
+				ind = currDataSet['ids'].indexOf(id)
+				dataVal = currDataSet.d3Data[dataAttr][ind]
+				newAttrVal = line(dataVal)
+				message = 
+					type: "update"
+					attr: mapping[0]
+					val: newAttrVal
+					nodes: [id]
+				window.connector.sendUpdate(message)
+			
+	$scope.submitNominalMappingChange = ($event, dataAttr, mappedAttr, newIds) ->
+		if $event.keyCode is 13 #enter key
+			newCategoryVal = angular.element($event.target).val()
+			message =
+				type: "update"
+				attr: mappedAttr
+				val: newCategoryVal
+				nodes: newIds
+			window.connector.sendUpdate(message)
+			
+	$scope.selectDataSet = (dataSet) ->
+		$scope.currentDataSet = $scope.dataSets.indexOf(dataSet)
+	
 	$scope.getMappings = ->
+		$scope.currentMappings = []
 		if (not $scope.dataSets[$scope.currentDataSet].selections) or 
 				$scope.dataSets[$scope.currentDataSet].selections.length == 0
 			console.log $scope.dataSets[$scope.currentDataSet]
-			$scope.mappings = getMappings($scope.dataSets[$scope.currentDataSet])
+			$scope.dataSets[$scope.currentDataSet].mappings = 
+				getMappings($scope.dataSets[$scope.currentDataSet])
 		else
 			selectedSet = getSelectedSet($scope.dataSets[$scope.currentDataSet])
-			$scope.mappings = getMappings(selectedSet)
+			$scope.selectedSet = selectedSet
+			$scope.dataSets[$scope.currentDataSet].mappings = 
+				getMappings(selectedSet)
+			console.log getMappings(selectedSet)
 	
 	$scope.toggleSelect = (dataSetIndex, elemIndex) ->
 		if not $scope.dataSets[dataSetIndex].selections
