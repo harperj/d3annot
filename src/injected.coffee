@@ -3,6 +3,47 @@ elemToLink = null
 lastNode = null
 num_links = 0
 
+# Calculate the bounding box of an element with respect to its parent element
+transformedBoundingBox = (el) ->
+	bb = el.getBBox()
+	svg = el.ownerSVGElement
+	m = el.getTransformToElement(svg)
+	
+	# Create an array of all four points for the original bounding box
+	pts = [
+    svg.createSVGPoint(), svg.createSVGPoint(),
+    svg.createSVGPoint(), svg.createSVGPoint()
+	]
+	
+	pts[0].x=bb.x
+	pts[0].y=bb.y
+	pts[1].x=bb.x+bb.width
+	pts[1].y=bb.y
+	pts[2].x=bb.x+bb.width
+	pts[2].y=bb.y+bb.height
+	pts[3].x=bb.x
+	pts[3].y=bb.y+bb.height;
+
+  # Transform each into the space of the parent,
+  # and calculate the min/max points from that.    
+	xMin=Infinity
+	xMax=-Infinity
+	yMin=Infinity
+	yMax=-Infinity
+	for pt in pts
+		pt = pt.matrixTransform(m)
+		xMin = Math.min(xMin,pt.x)
+		xMax = Math.max(xMax,pt.x)
+		yMin = Math.min(yMin,pt.y)
+		yMax = Math.max(yMax,pt.y)
+
+  # Update the bounding box with the new values
+	bb.x = xMin
+	bb.width  = xMax-xMin
+	bb.y = yMin
+	bb.height = yMax-yMin
+	return bb
+
 class VisUpdater
 	constructor: ->
 		
@@ -24,8 +65,11 @@ class VisUpdater
 			item.d3Data = d3.select(this).node().__data__
 			item.nodeText = this.outerHTML
 			item.cssText = window.getComputedStyle(this, null).cssText
+			item.bbox = transformedBoundingBox(this)
+			item.bbox = {height: item.bbox.height, width: item.bbox.width, x: item.bbox.x, y: item.bbox.y}
 			data.push(item)
 		@elem_map = elem_map
+		console.log data
 		return data
 		
 	exportDataToVis: (data) ->
@@ -48,6 +92,9 @@ class VisUpdater
 		else if attr is "color"
 			attr = "fill"
 		d3.select(clone).attr(attr, val);
+		console.log("New clone")
+		console.log(attr + "," + val)
+		console.log clone
 		return clone
 		
 	update: (updateData) =>

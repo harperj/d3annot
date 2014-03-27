@@ -8,7 +8,6 @@ class VisConnector
 				@initConnection(sender.tab.id)
 				@dataSets = @processPayload(message.payload)
 				@tableViews = []
-				console.log @dataSets
 				$.each @dataSets, (i, dataSet) =>
 					dataSet.dataTypes = @inferTypes(dataSet.d3Data)
 					dataSet.visTypes = @inferTypes(dataSet.visData)
@@ -22,7 +21,6 @@ class VisConnector
 		@port = chrome.tabs.connect tabId, {name: 'd3annot'}
 	
 	sendUpdate: (message) =>
-		console.log message
 		@port.postMessage(message)
 	
 	getDataSetTable: (dataSetId) =>
@@ -55,23 +53,8 @@ class VisConnector
 	circleTrans: =>
 		@port.postMessage {type: "circleTrans"}
 		
-	prepareMarkForDisplay: (node, cssText) ->
-		node.style.cssText = cssText
-		tagName = $(node).prop("tagName").toLowerCase()  #lower case b/c jquery inconsistency
-	
-		# circle case
-		if tagName == "circle" or tagName == "ellipse"
-			d3.select(node).attr "cx", 50
-			d3.select(node).attr "cy", 50
-			return node
-		else
-			d3.select(node).attr "x", "0"
-			d3.select(node).attr "y", "0"
-			d3.select(node).attr "transform", ""
-			return node
-		
 	# How will we handle nonexistant fields?
-	extractVisData: (node, cssText) ->
+	extractVisData: (node, cssText, bbox) ->
 		visRow = {}
 		nodeAttrs = {}
 		$.each node.attributes, (j, attr) ->
@@ -81,29 +64,27 @@ class VisConnector
 		visRow["color"] = nodeAttrs["fill"]
 		visRow["stroke"] = nodeAttrs["stroke"]
 		visRow["stroke-width"] = nodeAttrs["stroke-width"]
+		visRow["x-position"] = bbox.x
+		visRow["y-position"] = bbox.y
 		if visRow["shape"] == "circle"
-			#visRow["x-position"] = nodeAttrs["cx"]
-			#visRow["y-position"] = nodeAttrs["cy"]
-			visRow["radius"] = nodeAttrs["r"]
-		else if visRow["shape"] == "rect"
-			#visRow["x-position"] = nodeAttrs["x"]
-			#visRow["y-position"] = nodeAttrs["y"]
-			visRow["width"] = nodeAttrs["width"]
-			visRow["height"] = nodeAttrs["height"]
+			visRow["radius"] = parseFloat(nodeAttrs["r"])
+			visRow["area"] = parseFloat(nodeAttrs["r"])^2
+		else
+			visRow["width"] = bbox.width
+			visRow["height"] = bbox.height
+			visRow["area"] = bbox.width * bbox.height
+			
 		return visRow
 		
 	# This is a little hacky -- perhaps think about it a bit more later
 	extractVisSchema: (node) ->
 		shape = node.tagName.toLowerCase()
-		if shape == "circle"
+		if shape is "circle" 
 			return {"shape": [], "color": [], "stroke": [], \ 
-								"stroke-width": [], "radius": []}
-		else if shape == "rect"
-			return {"shape": [], "color": [], "stroke": [], \ 
-								"stroke-width": [], "width": [], "height": []}
+							"stroke-width": [], "radius": [], "area": [], "x-position": [], "y-position": []}
 		else
 			return {"shape": [], "color": [], "stroke": [], \ 
-								"stroke-width": [] }
+							"stroke-width": [], "width": [], "height": [], "area": [], "x-position": [], "y-position": []}
 		
 	findSchema: (data, d3Data, tagName) ->
 		thisSchema = Object.keys(d3Data)
@@ -121,7 +102,7 @@ class VisConnector
 	
 		$.each payload, (i, obj) =>
 			d3Data = obj.d3Data
-			node = $(obj.nodeText)[0]
+			node = prepareMarkForDisplay(obj.nodeText, obj.cssText)
 			schema = -1
 			
 			# object types require some schema thought
@@ -163,15 +144,15 @@ class VisConnector
 				data[schema].visData = @extractVisSchema(node)
 		
 			# finally extract the visual attributes
-			visRow = @extractVisData(node, obj.cssText)
+			visRow = @extractVisData(node, obj.cssText, obj.bbox)
 			$.each Object.keys(data[schema].visData), (j, key) ->
 				data[schema].visData[key].push(visRow[key])
 		
 			# and add the node
 			if data[schema].hasOwnProperty('node')
-				data[schema]['node'].push(@prepareMarkForDisplay(node, obj.cssText))
+				data[schema]['node'].push({'tag': obj.nodeText, 'css': obj.cssText})
 			else
-				data[schema]['node'] = [@prepareMarkForDisplay(node, obj.cssText)]
+				data[schema]['node'] = [{'tag': obj.nodeText, 'css': obj.cssText}]
 		
 			if data[schema].hasOwnProperty('ids')
 				data[schema]['ids'].push(obj.id)
@@ -182,70 +163,14 @@ class VisConnector
 			dataSet.numEls = dataSet.d3Data[dataSet.schema[0]].length
 			
 		return data
-	
 
-###
- * Converts an RGB color value to HSL. Conversion formula
- * adapted from http://en.wikipedia.org/wiki/HSL_color_space.
- * Assumes r, g, and b are contained in the set [0, 255] and
- * returns h, s, and l in the set [0, 1].
- *
- * @param   Number  r       The red color value
- * @param   Number  g       The green color value
- * @param   Number  b       The blue color value
- * @return  Array           The HSL representation
-###
-
-rgbToHsl = (r, g, b) ->
-	r /= 255
-	g /= 255
-	b /= 255
-	max = Math.max r, g, b
-	min = Math.min r, g, b
-	h = (max + min) / 2
-	s = (max + min) / 2
-	l = (max + min) / 2
-	
-	# if achromatic
-	if max == min
-		h = 0
-		s = 0
-	else
-		d = max - min
-		s = if l > 0.5 then d / (2 - max - min) else d / (max + min)
-		switch max
-			when r then h = (g - b) / d + (if g < b then 7 else 0)
-			when g then h = (b - r) / d + 2
-			when b then h = (r - g) / d + 4
-		
-		h /= 6
-	return [h, s, l]
-
-hexToRgb = (hexString) ->
-	if typeof(hexString) != "string"
-		console.error "Got incorrect type in hexToRgb"
-		return null
-		
-	if hexString.charAt(0) == "#"
-		hexString = hexString.substring(1, 7)
-	
-	if hexString.length == 3
-		hexString = hexString[0] + hexString[0] \
-			+ hexString[1] + hexString[1] \
-			+ hexString[2] + hexString[2]
-	
-	r = parseInt(hexString.substring(0, 2), 16)
-	g = parseInt(hexString.substring(2, 4), 16)
-	b = parseInt(hexString.substring(4, 6), 16)
-	return [r, g, b]
-		
-isHexColorString = (hexString) ->
-	rgb = hexToRgb(hexString)
-	if rgb
-		if rgb[0] and rgb[1] and rgb[2]
-			return true
-	false
-
+getBBoxWithoutCanvas = (node) ->
+	svg = document.createElementNS("http://www.w3.org/2000/svg", "svg")
+	svg.appendChild(node)
+	$('body')[0].appendChild(svg)
+	bbox = node.getBBox()
+	svg.remove()
+	return bbox
 
 getMappings = (dataSet) ->
 	mappings = {}
@@ -274,12 +199,7 @@ getMapping = (dataAttr, visAttr, dataSet) ->
 		return getMappingNominal(dataAttrCol, visAttrCol, dataSet['ids'])
 	else
 		# quantitative/numeric
-		num = getMappingNumeric(dataAttrCol, visAttrCol)
-		if num
-			num.ids = dataSet['ids']
-			return num
-		else 
-			return getMappingNominal(dataAttrCol, visAttrCol, dataSet['ids'])
+		return getMappingNumeric(dataAttrCol, visAttrCol, dataSet['ids'])
 	return null
 			
 getMappingNominal = (col1, col2, ids) ->
@@ -306,17 +226,17 @@ getMappingNominal = (col1, col2, ids) ->
 hasMappingNominal = (col1, col2) ->
 	return if getMappingNominal(col1, col2) then true else false
 	
-getMappingNumeric = (col1, col2) ->
+getMappingNumeric = (col1, col2, ids) ->
 	mapping = {}
 	col1 = _.map(col1, (v) -> parseFloat(v))
 	col2 = _.map(col2, (v) -> parseFloat(v))
 	zipped = _.zip(col1, col2)
 	linear_regression_line = ss.linear_regression().data(zipped).line()
 	rSquared = ss.r_squared(zipped, linear_regression_line)
-	console.log rSquared	
+	
 	if jStat.stdev(col1) is 0 or jStat.stdev(col2) is 0
 		return false
-	if rSquared > 0.97 and not(isNaN(rSquared))
+	if rSquared > 0.95 and not(isNaN(rSquared))
 		console.log "NUMERIC!"
 		mapping.dataMin = _.min(col1)
 		mapping.dataMinIndex = col1.indexOf(mapping.dataMin)
@@ -327,7 +247,10 @@ getMappingNumeric = (col1, col2) ->
 		mapping.visMax = _.max(col2)
 		mapping.visMaxIndex = col2.indexOf(mapping.visMax)
 		mapping.isNumericMapping = true
+		mapping.ids = ids
 		return mapping
+	else if not _.some(col2, (val) -> if val % 1 is 0 then true else false)
+		return getMappingNominal(col1, col2, ids)
 	return false
 
 getSelectedSet = (dataSet) ->
@@ -354,6 +277,30 @@ restylingApp = angular.module('restylingApp', [])
 restylingApp.controller 'MappingListCtrl', ($scope) ->
 	$scope._ = _
 	$scope.currentDataSet = 0
+	$scope.chosenMappings = null
+	$scope.addMappingDialog = false
+	$scope.addForm = { }
+	
+	$scope.getSelections = ->
+		sels = $scope.dataSets[$scope.currentDataSet].selections
+		if (not sels) or sels.length == 0
+			return $scope.dataSets[$scope.currentDataSet]['ids']
+		else
+			return sels
+	
+	$scope.submitValChange = ->
+		message = 
+			type: "update"
+			attr: $scope.addForm.changeAttr
+			val: $scope.addForm.changedAttrValue
+			nodes: $scope.getSelections()
+		window.connector.sendUpdate(message)
+	
+	$scope.setChosenMappings = ->
+		$scope.addMappingDialog = false
+		$scope.chosenMappings = $scope.dataSets[$scope.currentDataSet].mappings
+		console.log $scope.dataSets
+		console.log $scope.chosenMappings
 	
 	$scope.submitLinearMappingChange = ($event, dataAttr, mapping) ->
 		if $event.keyCode is 13
@@ -361,9 +308,6 @@ restylingApp.controller 'MappingListCtrl', ($scope) ->
 			newMax = [mapping[1].dataMax, parseFloat(mapping[1].visMax)]
 			regression = ss.linear_regression().data([newMin, newMax])
 			line = regression.line()
-			console.log regression.b()
-			console.log regression.m()
-			console.log [newMin, newMax]
 			currDataSet = $scope.dataSets[$scope.currentDataSet]
 			for id in mapping[1].ids
 				ind = currDataSet['ids'].indexOf(id)
@@ -374,6 +318,7 @@ restylingApp.controller 'MappingListCtrl', ($scope) ->
 					attr: mapping[0]
 					val: newAttrVal
 					nodes: [id]
+				console.log message
 				window.connector.sendUpdate(message)
 			
 	$scope.submitNominalMappingChange = ($event, dataAttr, mappedAttr, newIds) ->
@@ -393,7 +338,6 @@ restylingApp.controller 'MappingListCtrl', ($scope) ->
 		$scope.currentMappings = []
 		if (not $scope.dataSets[$scope.currentDataSet].selections) or 
 				$scope.dataSets[$scope.currentDataSet].selections.length == 0
-			console.log $scope.dataSets[$scope.currentDataSet]
 			$scope.dataSets[$scope.currentDataSet].mappings = 
 				getMappings($scope.dataSets[$scope.currentDataSet])
 		else
@@ -401,7 +345,6 @@ restylingApp.controller 'MappingListCtrl', ($scope) ->
 			$scope.selectedSet = selectedSet
 			$scope.dataSets[$scope.currentDataSet].mappings = 
 				getMappings(selectedSet)
-			console.log getMappings(selectedSet)
 	
 	$scope.toggleSelect = (dataSetIndex, elemIndex) ->
 		if not $scope.dataSets[dataSetIndex].selections
@@ -421,12 +364,43 @@ restylingApp.controller 'MappingListCtrl', ($scope) ->
 			return 'selected'
 		return undefined
 
+prepareMarkForDisplay = (nodeText, cssText) ->
+	htmlNode = $(nodeText)[0]
+	svgNode = document.createElementNS("http://www.w3.org/2000/svg", htmlNode.tagName.toLowerCase());
+	htmlNode.style.cssText = cssText
+	tagName = $(htmlNode).prop("tagName").toLowerCase()  #lower case b/c jquery inconsistency
+		
+	for attr in htmlNode.attributes
+		svgNode.setAttribute(attr.name, attr.value)
+			
+	# circle case
+	if tagName == "circle" or tagName == "ellipse"
+		d3.select(svgNode).attr "cx", 50
+		d3.select(svgNode).attr "cy", 50
+		r = d3.select(svgNode).attr "r"
+	else
+		d3.select(svgNode).attr "x", "0"
+		d3.select(svgNode).attr "y", "0"
+	return svgNode
+		
+
 restylingApp.directive 'svgInject', ($compile) ->
 	return link: (scope, element, attrs, controller) ->
-		svg = angular.element('<svg width="100" height="100"></svg>')
-		svg.append(scope.dataSet['node'][scope.i])
-		element.append(svg)
-		angular.element(element).html(angular.element(element).html())
+		svg = document.createElementNS("http://www.w3.org/2000/svg", "svg")
+		svg.setAttribute("width", "50")
+		svg.setAttribute("height", "50")
+		element[0].appendChild(svg)
+		markInfo = scope.dataSet['node'][scope.i]
+		mark = prepareMarkForDisplay(markInfo['tag'], markInfo['css'])
+		svg.appendChild(mark)
+		bbox =  mark.getBBox()
+		scaleDimVal = bbox.height
+		if bbox.width > bbox.height
+			scaleDimVal = bbox.width
+		newTranslate = "translate(" + (-bbox.x) + "," + (-bbox.y) + ")"
+		newScale = "scale(" + 40/scaleDimVal + "," + 40/scaleDimVal + ")"
+		d3.select(mark).attr("transform", newScale + newTranslate)
+		#angular.element(element).html(angular.element(element).html())
 		
 $(document).ready () ->
 	connector = new VisConnector()

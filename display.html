@@ -8,6 +8,7 @@
 	<link rel="stylesheet" type="text/css" href="lib/bootstrap/css/bootstrap.min.css" />
 	<link rel="stylesheet" type="text/css" href="lib/bootstrap/css/bootstrap-theme.min.css" />
 	<link rel="stylesheet" type="text/css" href="lib/ng-table.css" />
+	<script src="lib/raphael-min.js"></script>
 	<script src="lib/angular.min.js"></script>
 	<script src="lib/ui-utils.js"></script>
 	<script src="lib/simple_statistics.js"></script>
@@ -25,40 +26,109 @@
 
 <div id="wrapper">
 	<div id="sidebar-wrapper">
-	<span ng-repeat="(dataAttr, mapped) in dataSets[currentDataSet].mappings">
-		<div ng-repeat="mappedAttr in mapped">
-			<table class="table" style="width:300px;">
-				<thead>
-					<tr>
-						<th>{{dataAttr}}</th>
-						<th>{{mappedAttr[0]}}</th>
-						<th>ID</th>
-					</tr>
-				</thead>
-				<tr ng-if="!mappedAttr[1].hasOwnProperty('isNumericMapping')" ng-repeat="(from, to) in mappedAttr[1]">
-					<td>{{from}}</td>
-					<td>
-						<input ng-keypress="submitNominalMappingChange($event, dataAttr, mappedAttr[0], to[1])" ng-model="to[0][0]">
-						</input>
-					</td>
-					<td>{{to[1]}}</td>
-				</tr>
-				<tbody ng-if="mappedAttr[1].hasOwnProperty('isNumericMapping')">
-					<tr>
-						<td>Min: {{mappedAttr[1].dataMin}}</td>
-						<td>
-							Min: <input ng-keypress="submitLinearMappingChange($event, dataAttr, mappedAttr)" ng-model="mappedAttr[1].visMin">
-						</td>
-					</tr>
-					<tr>
-						<td>Max: {{mappedAttr[1].dataMax}}</td>
-						<td>Max:
-							<input ng-keypress="submitLinearMappingChange($event, dataAttr, mappedAttr)" ng-model="mappedAttr[1].visMax">
-						</td>
-						<td>{{mappedAttr[1].ids}}</td>
-					</tr>
-				</tbody>
-			</table>
+	<div class="well">
+		<button ng-click="setChosenMappings()">Get Mappings</button>
+		<button ng-click="addMappingDialog=true">Add Mapping</button>
+	</div>
+	<div class="panel-group" id="mappings" ng-if="addMappingDialog==false" ng-repeat="(dataAttr, mapped) in chosenMappings">
+		<div class="panel panel-default" ng-repeat="mappedAttr in mapped">
+			<a data-toggle="collapse" data-parent="#mappings" data-target="#{{(dataAttr + mappedAttr[0]).replace(' ','')}}">
+				<div class="panel-heading">
+					{{dataAttr}} to {{mappedAttr[0]}}
+				</div>
+			</a>
+			<div id="{{(dataAttr + mappedAttr[0]).replace(' ','')}}" class="panel-collapse collapse" ng-if="!mappedAttr[1].hasOwnProperty('isNumericMapping')">
+				<span>
+					<div class="col-md-6 form-group">
+						<label>{{dataAttr}}</label>
+					</div>
+					<div class="col-md-6 form-group">
+						<label>{{mappedAttr[0]}}</label>
+					</div>
+					<span class="clearfix">
+				</span>
+				<span ng-repeat="(from, to) in mappedAttr[1]">
+					<div class="col-md-6 form-group">
+						<label>{{from}}</label>
+					</div>
+					<div class="col-md-6 form-group">
+						<input class="form-control" ng-keypress="submitNominalMappingChange($event, dataAttr, mappedAttr[0], to[1])" ng-model="to[0][0]"></input>
+					</div>
+					<span class="clearfix">
+				</span>
+			</div>
+			<div id="{{(dataAttr + mappedAttr[0]).replace(' ','')}}" class="panel-collapse collapse" ng-if="mappedAttr[1].hasOwnProperty('isNumericMapping')">
+				<span>
+					<div class="col-md-6 form-group">
+						<label>{{dataAttr}}</label>
+					</div>
+					<div class="col-md-6 form-group">
+						<label>{{mappedAttr[0]}}</label>
+					</div>
+					<span class="clearfix">
+				</span>
+				<span>
+					<div class="col-md-6 form-group">
+						<label>Min:</label>
+					</div>
+					<div class="col-md-6 form-group">
+					</div>
+					<span class="clearfix">
+				</span>
+				<span>
+					<div class="col-md-6 form-group">
+						<label>{{mappedAttr[1].dataMin}}</label>
+					</div>
+					<div class="col-md-6 form-group">
+						<input ng-keypress="submitLinearMappingChange($event, dataAttr, mappedAttr)" ng-model="mappedAttr[1].visMin">
+					</div>
+					<span class="clearfix">
+				</span>
+				<span>
+					<div class="col-md-6 form-group">
+						<label>Max:</label>
+					</div>
+					<div class="col-md-6 form-group">
+					</div>
+					<span class="clearfix">
+				</span>
+				<span>
+					<div class="col-md-6 form-group">
+						<label>{{mappedAttr[1].dataMax}}</label>
+					</div>
+					<div class="col-md-6 form-group">
+						<input ng-keypress="submitLinearMappingChange($event, dataAttr, mappedAttr)" ng-model="mappedAttr[1].visMax">
+					</div>
+					<span class="clearfix">
+				</span>
+			</div>
+		</div>
+	</div>
+	<span ng-if="addMappingDialog">
+		<div>
+			<form>
+				Choose Action:
+				<select ng-model="addForm.action" ng-change="addFormActionChange()">
+					<option value="valChange">Change Values</option>
+					<option value="mapNominal">Add Nominal Mapping</option>
+					<option value="mapLinear">Add Linear Mapping</option>
+				</select>
+				<span ng-if="addForm.action === 'valChange'">
+					Select visual attribute:
+					<select ng-model="addForm.changeAttr" ng-options="visAttr for visAttr in dataSets[currentDataSet].visSchema"></select>
+					<span ng-if="addForm.changeAttr && (addForm.action === 'valChange')">
+						Select value:
+						<input ng-model="addForm.changedAttrValue">
+						<br />
+						<button ng-click="submitValChange()">Submit Change</button>
+					</span>
+				</span>
+				
+				<span ng-if="addForm.action === 'mapLinear'">
+					   
+				</span>
+				
+			</form>
 		</div>
 	</span>
 </div>
