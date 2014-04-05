@@ -4,10 +4,12 @@ lastNode = null
 num_links = 0
 
 # Calculate the bounding box of an element with respect to its parent element
-transformedBoundingBox = (el) ->
+transformedBoundingBox = (el, to) ->
 	bb = el.getBBox()
 	svg = el.ownerSVGElement
-	m = el.getTransformToElement(svg)
+	unless to
+		to = svg
+	m = el.getTransformToElement(to)
 	
 	# Create an array of all four points for the original bounding box
 	pts = [
@@ -44,6 +46,13 @@ transformedBoundingBox = (el) ->
 	bb.height = yMax-yMin
 	return bb
 
+window.transformedBoundingBox = transformedBoundingBox
+
+getRootSVG = (node) ->
+	while node and node.tagName != 'svg'
+		node = node.parentNode
+	return node
+
 class VisUpdater
 	constructor: ->
 		
@@ -52,24 +61,26 @@ class VisUpdater
 		data = []
 		id_counter = 0
 		elem_map = []
-		console.log selection
 		selection.each (d, i) ->
 			item = {}
-			console.log this.tagName
-			if this.tagName in ['g', 'svg']
+			if this.tagName in ['g', 'svg', 'defs', 'clippath']
+				return true
+			if this.parentElement.tagName.toLowerCase() is 'clippath'
 				return true
 				
 			item.id = id_counter
 			id_counter++;
-			elem_map.push( "current": d3.select(this).node() )
 			item.d3Data = d3.select(this).node().__data__
 			item.nodeText = this.outerHTML
 			item.cssText = window.getComputedStyle(this, null).cssText
-			item.bbox = transformedBoundingBox(this)
-			item.bbox = {height: item.bbox.height, width: item.bbox.width, x: item.bbox.x, y: item.bbox.y}
+			if this instanceof SVGElement
+				item.bbox = transformedBoundingBox(this, null)
+				item.bbox = {height: item.bbox.height, width: item.bbox.width, x: item.bbox.x, y: item.bbox.y}
+			elem_map.push
+				"current": d3.select(this).node()
+				"currentBBox": transformedBoundingBox(d3.select(this).node())
 			data.push(item)
 		@elem_map = elem_map
-		console.log data
 		return data
 		
 	exportDataToVis: (data) ->
@@ -86,41 +97,131 @@ class VisUpdater
 		document.dispatchEvent(evt)
 		
 	getUpdatedClone: (id, attr, val) ->
-		clone = $(@elem_map[id]["current"]).clone(true)[0]
-		if attr is "radius"
-			attr = "r"
-		else if attr is "color"
-			attr = "fill"
-		d3.select(clone).attr(attr, val);
-		console.log("New clone")
-		console.log(attr + "," + val)
+		currentBBox = @elem_map[id]["currentBBox"]
+		parentNode = @elem_map[id]["current"].parentElement
+		svg = getRootSVG(@elem_map[id]["current"])
+		clone = null
+		currentTag = @elem_map[id]["current"].tagName.toLowerCase()
+		
+		if attr is "shape"
+			clone = getNodeFromShape(val)
+		else if currentTag is "polygon"
+			clone = getNodeFromShape(currentTag, @elem_map[id]["current"].getAttribute("points"))
+		else
+			clone = getNodeFromShape(currentTag)
+			
+		parentNode.appendChild(clone)
+		bbox = transformedBoundingBox(clone, svg)
+		console.log bbox
 		console.log clone
-		return clone
+		
+		for currAttr in @elem_map[id]["current"].attributes
+			if not (currAttr.name in ["id", "cx", "cy", "x", "y", "r", "transform", "points", "clip-path", "requiredFeatures", "systemLanguage", "requiredExtensions", "vector-effect"])
+				clone.setAttribute(currAttr.name, currAttr.value)
+		clone.setAttribute("vector-effect", "non-scaling-stroke")
+
+		if attr is "color"
+			attr = "fill"
+			d3.select(clone).style("fill", val)			
+		else if not (attr in ["x-position", "y-position", "shape", "width", "height"])
+			d3.select(clone).attr(attr, val)
+		
+		translate = svg.createSVGTransform()
+		parentTrans = @elem_map[id]["current"].getTransformToElement(svg)
+		trans = clone.getTransformToElement(svg)
+		parentOffset = [0, 0]
+		if currentTag is "circle"
+			cx = parseFloat(d3.select(@elem_map[id]["current"]).attr("cx"))
+			cy = parseFloat(d3.select(@elem_map[id]["current"]).attr("cy"))
+			if cx then parentOffset[0] = cx
+			if cy then parentOffset[1] = cy
+		else if currentTag is "rect"
+			x = parseFloat(d3.select(@elem_map[id]["current"]).attr("x"))
+			y = parseFloat(d3.select(@elem_map[id]["current"]).attr("y"))
+			if x then parentOffset[0] = x
+			if y then parentOffset[1] = y
+		translate.setTranslate(parentTrans.e-trans.e+parentOffset[0], parentTrans.f-trans.f+parentOffset[1])
+		clone.transform.baseVal.appendItem(translate)
+			
+		if attr is "x-position"
+			newX = parseFloat(val)
+			xtranslate = svg.createSVGTransform()
+			xtranslate.setTranslate(newX-@elem_map[id]["currentBBox"].x, 0)
+			clone.transform.baseVal.appendItem(xtranslate)
+		else if attr is "y-position"
+			newY = parseFloat(val)
+			ytranslate = svg.createSVGTransform()
+			ytranslate.setTranslate(0, newY-@elem_map[id]["currentBBox"].y)
+			clone.transform.baseVal.appendItem(ytranslate)
+			
+		scale = svg.createSVGTransform()
+		if val is "circle"
+			if @elem_map[id]["currentBBox"].width < @elem_map[id]["currentBBox"].height
+				scale.setScale(@elem_map[id]["currentBBox"].width / bbox.width,@elem_map[id]["currentBBox"].width / bbox.width)
+			else
+				scale.setScale(@elem_map[id]["currentBBox"].height / bbox.height,@elem_map[id]["currentBBox"].height / bbox.height)
+		else if attr is "width"
+			newWidth = parseFloat(val)
+			scale.setScale((newWidth / bbox.width), (@elem_map[id]["currentBBox"].height / bbox.height))
+		else if attr is "height"
+			newHeight = parseFloat(val)
+			scale.setScale((@elem_map[id]["currentBBox"].width / bbox.width), (newHeight / bbox.height))			
+		else 
+			scale.setScale((@elem_map[id]["currentBBox"].width / bbox.width), (@elem_map[id]["currentBBox"].height / bbox.height))
+		clone.transform.baseVal.appendItem(scale)
+		
+		@elem_map[id]["currentBBox"] = transformedBoundingBox(clone, svg)
+		return clone	
 		
 	update: (updateData) =>
 		newNodes = []
-		if updateData.attr != "shape"
-			for id in updateData.nodes
-				newNode = @getUpdatedClone(id, updateData.attr, updateData.val)
-				newNodes.push(newNode)
+		for id in updateData.nodes
+			newNode = @getUpdatedClone(id, updateData.attr, updateData.val)
+			newNodes.push(newNode)
 		for i in [0..newNodes.length-1]
 			oldNodeData = @elem_map[updateData.nodes[i]]
-			console.log oldNodeData
 			if not oldNodeData.hasOwnProperty("orig")
-				oldNodeData["orig"] = oldNodeData["current"]
-				oldNodeData["current"] = newNodes[i]
-				$(oldNodeData["orig"]).parent().append(newNodes[i])
-				$(newNodes[i]).html($(newNodes[i]).html())
-				$(oldNodeData["orig"]).hide()
+				@elem_map[updateData.nodes[i]]["orig"] = @elem_map[updateData.nodes[i]]["current"]
+				$(@elem_map[updateData.nodes[i]]["orig"]).hide()
+				@elem_map[updateData.nodes[i]]["current"] = newNodes[i]
 			else
-				$(oldNodeData["current"]).remove()
-				oldNodeData["current"] = newNodes[i] 
-				$(oldNodeData["orig"]).parent().append(newNodes[i])
+				$(@elem_map[updateData.nodes[i]]["current"]).remove()
+				@elem_map[updateData.nodes[i]]["current"] = newNodes[i] 
+		
+shapeSpecs = 
+	"triangle": "-20,-17 0,17 20,-17"
+	"star": "10,0, 4.045084971874736,2.938926261462366, 3.090169943749474,9.510565162951535, -1.545084971874737,4.755282581475767, -8.090169943749473,5.877852522924733, -5,6.12323399409214e-16, -8.090169943749473,-5.87785252292473, -1.5450849718747377,-4.755282581475767, 3.0901699437494727,-9.510565162951535, 4.045084971874736,-2.9389262614623664"
+	"plus": "-1,-8 1,-8 1,-1 8,-1 8,1 1,1 1,8 -1,8 -1,1 -8,1 -8,-1 -1,-1"
+	"diamond": "1,0 0,2 -1,0 0,-2"
 				
+getNodeFromShape = (val, currentPts = null) ->
+	clone = null
+	if val in ["triangle", "plus", "star", "diamond"]
+		clone = document.createElementNS("http://www.w3.org/2000/svg", "polygon")
+		if val is "triangle"
+			clone.setAttribute("points", shapeSpecs["triangle"])
+		else if val is "star"
+			clone.setAttribute("points", shapeSpecs["star"])
+		else if val is "plus"
+			clone.setAttribute("points", shapeSpecs["plus"])
+		else if val is "diamond"
+			clone.setAttribute("points", shapeSpecs["diamond"])
+	else if val is "rect"
+		clone = document.createElementNS("http://www.w3.org/2000/svg", val)
+		clone.setAttribute("width", 1)
+		clone.setAttribute("height", 1)
+	else if val is "circle"
+		clone = document.createElementNS("http://www.w3.org/2000/svg", val)
+		clone.setAttribute("r", 1)
+	else if val is "polygon"
+		clone = document.createElementNS("http://www.w3.org/2000/svg", "polygon")
+		clone.setAttribute("points", currentPts)
+	else
+		clone = document.createElementNS("http://www.w3.org/2000/svg", val)
+	return clone
 				
 visUpdater = new VisUpdater()
 document.addEventListener 'visUpdateEvent', (event) ->
-	console.log event
 	visUpdater.update(event.detail)
 
 extractHoveredElement = (elem) ->
@@ -137,32 +238,9 @@ saveDataJSON = (selector) ->
 		type: "text/json;charset=" + document.characterSet)
 	saveAs(blob, "extracted_data.json")
 
-rightClickMenu = $("<ul class='custom-menu'>
-		<li data-action='extract_tag'>Extract data by tag</li>
-		<li data-action='extract_container'>Extract data by container</li>
-	</ul>")
-rightClickMenu.appendTo("body").hide()
-
 $(document).bind "contextmenu", (event) ->
 	event.preventDefault()
-	lastNode = event.target
-	$(".custom-menu").toggle(100).css
-		display: "inline"
-		top: event.pageY + "px"
-		left: event.pageX + "px"
-
-$(document).on "click", (event) ->
-	$(".custom-menu").hide(100)
-
-###
-($ ".custom-menu li").on "mouseover", (event) ->
-	if (($ this).attr "data-action") == "extract_tag"
-		(d3.selectAll lastNode.tagName).classed "mouseOn", true
-###
-	
-	
-$(".custom-menu li").click (event) ->
-	event.stopPropagation()
-	switch $(this).attr "data-action"
-		when "extract_tag" then visUpdater.exportSelectorDataToVis(lastNode.tagName)
-		when "extract_container" then $(document).bind('click', extractHoveredElement)
+	ancestorSVG = $(event.target).closest("svg")
+	if ancestorSVG.length > 0
+		svgChildren = $(ancestorSVG).find('*')
+		visUpdater.exportDataToVis(visUpdater.extractDataFromSelection(d3.selectAll(svgChildren)))

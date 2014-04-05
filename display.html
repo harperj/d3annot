@@ -80,7 +80,7 @@
 						<label>{{mappedAttr[1].dataMin}}</label>
 					</div>
 					<div class="col-md-6 form-group">
-						<input ng-keypress="submitLinearMappingChange($event, dataAttr, mappedAttr)" ng-model="mappedAttr[1].visMin">
+						<input class="form-control" ng-keypress="submitLinearMappingChange($event, dataAttr, mappedAttr)" ng-model="mappedAttr[1].visMin">
 					</div>
 					<span class="clearfix">
 				</span>
@@ -97,7 +97,7 @@
 						<label>{{mappedAttr[1].dataMax}}</label>
 					</div>
 					<div class="col-md-6 form-group">
-						<input ng-keypress="submitLinearMappingChange($event, dataAttr, mappedAttr)" ng-model="mappedAttr[1].visMax">
+						<input class="form-control" ng-keypress="submitLinearMappingChange($event, dataAttr, mappedAttr)" ng-model="mappedAttr[1].visMax">
 					</div>
 					<span class="clearfix">
 				</span>
@@ -116,7 +116,7 @@
 				<span ng-if="addForm.action === 'valChange'">
 					Select visual attribute:
 					<select ng-model="addForm.changeAttr" ng-options="visAttr for visAttr in dataSets[currentDataSet].visSchema"></select>
-					<span ng-if="addForm.changeAttr && (addForm.action === 'valChange')">
+					<span ng-if="addForm.changeAttr">
 						Select value:
 						<input ng-model="addForm.changedAttrValue">
 						<br />
@@ -125,9 +125,59 @@
 				</span>
 				
 				<span ng-if="addForm.action === 'mapLinear'">
-					   
+					Select data attribute:
+					<select ng-model="addForm.mapDataAttr" ng-options="dataAttr for dataAttr in dataSets[currentDataSet].schema"></select>
+					<br />
+					Select visual attribute:
+					<select ng-model="addForm.mapVisAttr" ng-options="visAttr for visAttr in dataSets[currentDataSet].visSchema"></select>
+					<span ng-if="addForm.mapDataAttr && addForm.mapVisAttr">
+						<div>
+							<span>
+								<div class="col-md-6 form-group">
+									<label>{{addForm.mapDataAttr}}</label>
+								</div>
+								<div class="col-md-6 form-group">
+									<label>{{addForm.mapVisAttr}}</label>
+								</div>
+								<span class="clearfix">
+							</span>
+							<span>
+								<div class="col-md-6 form-group">
+									<label>Min:</label>
+								</div>
+								<div class="col-md-6 form-group">
+								</div>
+								<span class="clearfix">
+							</span>
+							<span>
+								<div class="col-md-6 form-group">
+									<label>{{_.min(dataSets[currentDataSet].d3Data[addForm.mapDataAttr])}}</label>
+								</div>
+								<div class="col-md-6 form-group">
+									<input class="form-control" ng-keypress="submitNewLinearMapping($event)" ng-model="addForm.newMin">
+								</div>
+								<span class="clearfix">
+							</span>
+							<span>
+								<div class="col-md-6 form-group">
+									<label>Max:</label>
+								</div>
+								<div class="col-md-6 form-group">
+								</div>
+								<span class="clearfix">
+							</span>
+							<span>
+								<div class="col-md-6 form-group">
+									<label>{{_.max(dataSets[currentDataSet].d3Data[addForm.mapDataAttr])}}</label>
+								</div>
+								<div class="col-md-6 form-group">
+									<input class="form-control" ng-keypress="submitNewLinearMapping($event, dataAttr, mappedAttr)" ng-model="addForm.newMax">
+								</div>
+								<span class="clearfix">
+							</span>
+						</div>
+					</span>
 				</span>
-				
 			</form>
 		</div>
 	</span>
@@ -141,13 +191,13 @@
 		<table class="table">
 			<thead>
 				<tr>
-					<th ng-repeat="(prop, val) in dataSet.d3Data">{{prop}}</th>
 					<th>Mark</th>
+					<th ng-repeat="(prop, val) in dataSet.d3Data">{{prop}}</th>
 				</tr>
 			</thead>
 			<tr ng-repeat="i in _.range(0, dataSet.numEls)" ng-click="toggleSelect($parent.$index, i)" ng-class="itemClass($parent.$index, i)">
-				<td ng-repeat="(prop, val) in dataSet.d3Data">{{val[i]}}</td>
 				<td svg-inject></td>
+				<td ng-repeat="(prop, val) in dataSet.d3Data">{{val[i]}}</td>
 			</tr>
 		</table>
 	</div>
