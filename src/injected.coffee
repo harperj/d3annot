@@ -63,23 +63,25 @@ class VisUpdater
 		elem_map = []
 		selection.each (d, i) ->
 			item = {}
-			if this.tagName in ['g', 'svg', 'defs', 'clippath']
+			console.log this.tagName.toLowerCase()
+			if this.tagName.toLowerCase() in ['g', 'svg', 'defs', 'clippath']
 				return true
 			if this.parentElement.tagName.toLowerCase() is 'clippath'
 				return true
 				
-			item.id = id_counter
-			id_counter++;
-			item.d3Data = d3.select(this).node().__data__
-			item.nodeText = this.outerHTML
-			item.cssText = window.getComputedStyle(this, null).cssText
 			if this instanceof SVGElement
+				item.id = id_counter
+				id_counter++;
+				item.d3Data = d3.select(this).node().__data__
+				item.nodeText = this.outerHTML
+				item.cssText = window.getComputedStyle(this, null).cssText
 				item.bbox = transformedBoundingBox(this, null)
 				item.bbox = {height: item.bbox.height, width: item.bbox.width, x: item.bbox.x, y: item.bbox.y}
-			elem_map.push
-				"current": d3.select(this).node()
-				"currentBBox": transformedBoundingBox(d3.select(this).node())
-			data.push(item)
+				elem_map.push
+					"current": d3.select(this).node()
+					"currentBBox": transformedBoundingBox(d3.select(this).node())
+				data.push(item)
+		
 		@elem_map = elem_map
 		return data
 		
@@ -94,6 +96,7 @@ class VisUpdater
 	exportDataToVis: (data) ->
 		evt = document.createEvent "CustomEvent"
 		evt.initCustomEvent("dataExportEvent", true, true, data)
+		console.log evt
 		document.dispatchEvent(evt)
 		
 	getUpdatedClone: (id, attr, val) ->
@@ -178,6 +181,9 @@ class VisUpdater
 		for id in updateData.nodes
 			newNode = @getUpdatedClone(id, updateData.attr, updateData.val)
 			newNodes.push(newNode)
+			
+			@returnNodeToTable(newNode, id)
+			
 		for i in [0..newNodes.length-1]
 			oldNodeData = @elem_map[updateData.nodes[i]]
 			if not oldNodeData.hasOwnProperty("orig")
@@ -187,6 +193,17 @@ class VisUpdater
 			else
 				$(@elem_map[updateData.nodes[i]]["current"]).remove()
 				@elem_map[updateData.nodes[i]]["current"] = newNodes[i] 
+		
+	returnNodeToTable: (node, id) =>
+		bbox = transformedBoundingBox(node)
+		message = 
+			nodeText: node.outerHTML
+			cssText: window.getComputedStyle(node, null).cssText
+			bbox: {height: bbox.height, width: bbox.width, x: bbox.x, y: bbox.y}
+			id: id
+		evt = document.createEvent "CustomEvent"
+		evt.initCustomEvent("markUpdateEvent", true, true, message)
+		document.dispatchEvent(evt)	
 		
 shapeSpecs = 
 	"triangle": "-20,-17 0,17 20,-17"

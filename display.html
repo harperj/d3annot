@@ -6,7 +6,6 @@
 	
 	<link rel="stylesheet" type="text/css" href="display.css" />
 	<link rel="stylesheet" type="text/css" href="lib/bootstrap/css/bootstrap.min.css" />
-	<link rel="stylesheet" type="text/css" href="lib/bootstrap/css/bootstrap-theme.min.css" />
 	<link rel="stylesheet" type="text/css" href="lib/ng-table.css" />
 	<script src="lib/raphael-min.js"></script>
 	<script src="lib/angular.min.js"></script>
@@ -25,111 +24,103 @@
 <body ng-controller="MappingListCtrl">
 
 <div id="wrapper">
+
 	<div id="sidebar-wrapper">
-	<div class="well">
-		<button ng-click="setChosenMappings()">Get Mappings</button>
-		<button ng-click="addMappingDialog=true">Add Mapping</button>
-	</div>
-	<div class="panel-group" id="mappings" ng-if="addMappingDialog==false" ng-repeat="(dataAttr, mapped) in chosenMappings">
+	<div class="mapping-group">
+	<div class="panel-group" id="mappings" ng-repeat="(dataAttr, mapped) in chosenMappings">
 		<div class="panel panel-default" ng-repeat="mappedAttr in mapped">
 			<a data-toggle="collapse" data-parent="#mappings" data-target="#{{(dataAttr + mappedAttr[0]).replace(' ','')}}">
-				<div class="panel-heading">
-					{{dataAttr}} to {{mappedAttr[0]}}
+				<div class="panel-heading btn-toolbar">
+					{{dataAttr}} to {{mappedAttr[0]}}  
+
+					<button ng-click="removeMapping(dataAttr, mappedAttr)" style="border: 0px;float: right;" type="button" class="btn btn-default btn-xs">
+  					<span class="glyphicon glyphicon-remove"></span>
+					</button>
 				</div>
 			</a>
+			
 			<div id="{{(dataAttr + mappedAttr[0]).replace(' ','')}}" class="panel-collapse collapse" ng-if="!mappedAttr[1].hasOwnProperty('isNumericMapping')">
-				<span>
-					<div class="col-md-6 form-group">
-						<label>{{dataAttr}}</label>
-					</div>
-					<div class="col-md-6 form-group">
-						<label>{{mappedAttr[0]}}</label>
-					</div>
-					<span class="clearfix">
-				</span>
-				<span ng-repeat="(from, to) in mappedAttr[1]">
-					<div class="col-md-6 form-group">
-						<label>{{from}}</label>
-					</div>
-					<div class="col-md-6 form-group">
-						<input class="form-control" ng-keypress="submitNominalMappingChange($event, dataAttr, mappedAttr[0], to[1])" ng-model="to[0][0]"></input>
-					</div>
-					<span class="clearfix">
-				</span>
+				<table class="table">
+					<tr>
+					<th>
+						{{dataAttr}}
+					</th>
+					<th>
+						{{mappedAttr[0]}}
+					</th>
+				</tr>
+				<tr ng-repeat="(from, to) in mappedAttr[1]">
+					<td>
+						{{from}}
+					</td>
+					<td>
+						<input class="form-control" ng-keypress="submitNominalMappingChange($event, dataAttr, mappedAttr[0], to)" value="{{to[0][0]}}"></input>
+					</td>
+				</tr>
+			</table>
 			</div>
 			<div id="{{(dataAttr + mappedAttr[0]).replace(' ','')}}" class="panel-collapse collapse" ng-if="mappedAttr[1].hasOwnProperty('isNumericMapping')">
-				<span>
-					<div class="col-md-6 form-group">
-						<label>{{dataAttr}}</label>
-					</div>
-					<div class="col-md-6 form-group">
-						<label>{{mappedAttr[0]}}</label>
-					</div>
-					<span class="clearfix">
-				</span>
-				<span>
-					<div class="col-md-6 form-group">
-						<label>Min:</label>
-					</div>
-					<div class="col-md-6 form-group">
-					</div>
-					<span class="clearfix">
-				</span>
-				<span>
-					<div class="col-md-6 form-group">
-						<label>{{mappedAttr[1].dataMin}}</label>
-					</div>
-					<div class="col-md-6 form-group">
-						<input class="form-control" ng-keypress="submitLinearMappingChange($event, dataAttr, mappedAttr)" ng-model="mappedAttr[1].visMin">
-					</div>
-					<span class="clearfix">
-				</span>
-				<span>
-					<div class="col-md-6 form-group">
-						<label>Max:</label>
-					</div>
-					<div class="col-md-6 form-group">
-					</div>
-					<span class="clearfix">
-				</span>
-				<span>
-					<div class="col-md-6 form-group">
-						<label>{{mappedAttr[1].dataMax}}</label>
-					</div>
-					<div class="col-md-6 form-group">
-						<input class="form-control" ng-keypress="submitLinearMappingChange($event, dataAttr, mappedAttr)" ng-model="mappedAttr[1].visMax">
-					</div>
-					<span class="clearfix">
-				</span>
+				<table class="table">
+					<tr>
+						<th></th>
+						<th>
+							{{dataAttr}}
+						</th>
+						<th>
+							{{mappedAttr[0]}}
+						</th>
+					</tr>
+					<tr>
+						<th>
+							<span class="rowHead"> Min </a>
+						</th>
+						<td>
+							{{mappedAttr[1].dataMin}}
+						</td>
+						<td>
+							<input class="form-control" ng-keypress="submitLinearMappingChange($event, dataAttr, mappedAttr)" ng-model="mappedAttr[1].visMin">
+						</td>
+						<td>
+							<span svg-inject ind="getIndexForDataVal(dataAttr, mappedAttr[1].dataMin)" data="dataSets[currentDataSet]">
+						</td>
+					</tr>
+					<tr>
+						<th class="rowHead">
+							<span class="rowHead"> Max </a>
+						</th>
+						<td>
+							{{mappedAttr[1].dataMax}}
+						</td>
+						<td>
+							<input class="form-control" ng-keypress="submitLinearMappingChange($event, dataAttr, mappedAttr)" ng-model="mappedAttr[1].visMax">
+						</td>
+					</tr>
+				</table>
 			</div>
 		</div>
 	</div>
-	<span ng-if="addMappingDialog">
+</div>
+
+<div class="bottomSticky">
+	<span>
 		<div>
 			<form>
 				Choose Action:
 				<select ng-model="addForm.action" ng-change="addFormActionChange()">
-					<option value="valChange">Change Values</option>
 					<option value="mapNominal">Add Nominal Mapping</option>
 					<option value="mapLinear">Add Linear Mapping</option>
 				</select>
-				<span ng-if="addForm.action === 'valChange'">
-					Select visual attribute:
-					<select ng-model="addForm.changeAttr" ng-options="visAttr for visAttr in dataSets[currentDataSet].visSchema"></select>
-					<span ng-if="addForm.changeAttr">
-						Select value:
-						<input ng-model="addForm.changedAttrValue">
-						<br />
-						<button ng-click="submitValChange()">Submit Change</button>
-					</span>
 				</span>
 				
-				<span ng-if="addForm.action === 'mapLinear'">
+				<span>
 					Select data attribute:
 					<select ng-model="addForm.mapDataAttr" ng-options="dataAttr for dataAttr in dataSets[currentDataSet].schema"></select>
 					<br />
 					Select visual attribute:
-					<select ng-model="addForm.mapVisAttr" ng-options="visAttr for visAttr in dataSets[currentDataSet].visSchema"></select>
+					<select ng-model="addForm.mapVisAttr">
+						<option ng-repeat="visAttr in dataSets[currentDataSet].visSchema" ng-if="isMapped(visAttr)" disabled="true" value="{{visAttr}}" label="{{visAttr}}">
+						<option ng-repeat="visAttr in dataSets[currentDataSet].visSchema" ng-if="!isMapped(visAttr)" value="{{visAttr}}" label="{{visAttr}}">
+					</select>
 					<span ng-if="addForm.mapDataAttr && addForm.mapVisAttr">
 						<div>
 							<span>
@@ -182,25 +173,50 @@
 		</div>
 	</span>
 </div>
-
-
+	</div>
 <div class="page-content-wrapper">
 <div class="page-content">
 	<div class="container" ng-repeat="dataSet in dataSets | orderBy: '-numEls':false">
 		<button ng-click="selectDataSet(dataSet)">Select</button>
-		<table class="table">
+		<table class="table dataTable">
 			<thead>
-				<tr>
+				<tr class="headerRow">
 					<th>Mark</th>
-					<th ng-repeat="(prop, val) in dataSet.d3Data">{{prop}}</th>
+					<th>d3_ID</th>
+					<th ng-repeat="(prop, val) in dataSet.d3Data" ng-if="prop != 'd3_ID'">{{prop}}</th>
 				</tr>
 			</thead>
-			<tr ng-repeat="i in _.range(0, dataSet.numEls)" ng-click="toggleSelect($parent.$index, i)" ng-class="itemClass($parent.$index, i)">
-				<td svg-inject></td>
-				<td ng-repeat="(prop, val) in dataSet.d3Data">{{val[i]}}</td>
+			<tr ng-repeat="i in _.range(0, dataSet.numEls)" ng-click="toggleSelect(dataSet, i)" ng-class="itemClass(dataSet, i)">
+				<td><span svg-inject ind="i" data="dataSet"></td>
+				<td>{{dataSet.d3Data['d3_ID'][i]}}</td>
+				<td ng-repeat="(prop, val) in dataSet.d3Data" ng-if="prop != 'd3_ID'">{{val[i]}}</td>
 			</tr>
 		</table>
 	</div>
+</div>
+</div>
+
+<div class="modal fade" id="attrEditor" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+	<div class="modal-dialog">
+		<div class="modal-content">
+			Select visual attribute:
+			<select ng-model="addForm.changeAttr">
+				<option ng-repeat="visAttr in dataSets[currentDataSet].visSchema" value="{{visAttr}}" label="{{visAttr}}">
+			</select>
+			<span ng-if="addForm.changeAttr">
+				Select value(s):
+				<table class="table">
+					<tr>
+						<th>Orig</th>
+						<th>New</th>
+					</tr>
+					<tr ng-repeat="attrClass in _.uniq(dataSets[currentDataSet].visData[addForm.changeAttr])">
+						<td>{{attrClass}}</td>
+						<td><input ng-keypress="submitAttrClassChange($event, attrClass, addForm.changeAttr)"></td>
+					</tr>
+				</table>
+			</div>
+		</div>
 </div>
 </div>
 </body>

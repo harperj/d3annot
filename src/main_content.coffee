@@ -8,6 +8,13 @@ class VisRemapper
 					type: "syn"
 					payload: @data
 		
+		# Listener for mark data to update
+		document.addEventListener 'markUpdateEvent', (event) =>
+			payload = event.detail
+			chrome.runtime.sendMessage
+				type: "markUpdate"
+				payload: payload
+		
 		chrome.runtime.onConnect.addListener (port) =>
 			console.assert(port.name == "d3annot")
 			port.onMessage.addListener(@displayResponse)

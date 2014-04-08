@@ -16,6 +16,22 @@ class VisConnector
 				angularScope.$apply =>
 					angularScope.mappings = getMappings(@dataSets[0])
 					angularScope.dataSets = @dataSets
+					
+			else if message.type == "markUpdate"
+				newMarkInfo = 
+					'tag': message.payload.nodeText
+					'css': message.payload.cssText
+					'bbox': message.payload.bbox
+				angularScope = angular.element($('body')).scope()
+				angularScope.$apply =>
+					#console.log "applying mark update for id: #{message.payload.id}"
+					for dataSet, index in angularScope.dataSets
+						markIndex = dataSet['ids'].indexOf(message.payload.id)
+						if markIndex != -1
+							#console.log "applying mark update, markIndex=#{markIndex}"
+							angularScope.dataSets[index]['node'][markIndex] = newMarkInfo
+							
+			setupModal()
 		
 	initConnection: (tabId) =>
 		@port = chrome.tabs.connect tabId, {name: 'd3annot'}
@@ -25,16 +41,13 @@ class VisConnector
 	
 	getDataSetTable: (dataSetId) =>
 		return @tableViews[dataSetId].dataTable
-	
-	getDataSetMappings: (dataSetId) =>
-		return @dataSets[dataSetId].mappings
-			
+
 	inferTypes: (dataObj) ->
 		dataTypes = {}
 		for dataAttr of dataObj
 			dataTypes[dataAttr] = @inferDataColType(dataObj[dataAttr])
 			if dataTypes[dataAttr] == "numeric"
-				newCol = _.map(dataObj[dataAttr], (d) -> parseFloat(d))
+				newCol = _.map(dataObj[dataAttr], (d) -> +parseFloat(d).toFixed(3))
 				dataObj[dataAttr] = newCol
 		return dataTypes
 		
@@ -53,19 +66,36 @@ class VisConnector
 		else
 			return "nominal"
 				
-	circleTrans: =>
-		@port.postMessage {type: "circleTrans"}
-		
 	# How will we handle nonexistant fields?
-	extractVisData: (node, cssText, bbox) ->
+	extractVisData: (node, nodeText, cssText, bbox) ->
 		visRow = {}
 		nodeAttrs = {}
 		$.each node.attributes, (j, attr) ->
 			nodeAttrs[attr.name] = attr.value
+		node.style.cssText = cssText
+		
+		newNode = prepareMarkForDisplay(nodeText, cssText)
+		svg = document.createElementNS("http://www.w3.org/2000/svg", "svg")
+		canvasWidth = 20
+		svg.setAttribute("width", "20")
+		svg.setAttribute("height", "20")
+		$('body')[0].appendChild(svg)
+		svg.appendChild(newNode)
+		styleFill = d3.select(newNode).style('fill')
+		styleStroke = d3.select(newNode).style('stroke')
+		$(svg).remove()
 		
 		visRow["shape"] = node.tagName.toLowerCase()
-		visRow["color"] = nodeAttrs["fill"]
-		visRow["stroke"] = nodeAttrs["stroke"]
+
+		if !styleFill
+			visRow["color"] = nodeAttrs["fill"]			
+		else
+			visRow["color"] = styleFill
+		if !styleStroke
+			visRow["stroke"] = nodeAttrs["stroke"]
+		else
+			visRow["stroke"] = styleStroke
+			
 		visRow["stroke-width"] = nodeAttrs["stroke-width"]
 		visRow["x-position"] = bbox.x
 		visRow["y-position"] = bbox.y
@@ -80,18 +110,18 @@ class VisConnector
 			
 		return visRow
 		
-	# This is a little hacky -- perhaps think about it a bit more later
 	extractVisSchema: (node) ->
 		shape = node.tagName.toLowerCase()
-		#if shape is "circle" 
-		#	return {"shape": [], "color": [], "stroke": [], \ 
-		#					"stroke-width": [], "radius": [], "area": [], "x-position": [], "y-position": []}
-		#else
 		return {"shape": [], "color": [], "stroke": [], \ 
 							"stroke-width": [], "width": [], "height": [], "area": [], "x-position": [], "y-position": []}
 		
 	findSchema: (data, d3Data, tagName) ->
-		thisSchema = Object.keys(d3Data)
+		thisSchema = null
+		if d3Data instanceof Object
+			thisSchema = Object.keys(d3Data)
+		else
+			thisSchema = ["scalar"]
+			
 		thisSchema.push(tagName)
 		found = -1
 		$.each data, (i, dataSet) ->
@@ -124,6 +154,7 @@ class VisConnector
 					data[schema].schema = newSchema
 					# set the schema for data and visual attributes of this set
 					data[schema].d3Data = {}
+					data[schema].d3Data["d3_ID"] = []
 					$.each Object.keys(d3Data), (j, key) ->
 						data[schema].d3Data[key] = []
 						
@@ -133,26 +164,29 @@ class VisConnector
 						
 				# now let's add the data item to our structure
 				$.each d3Data, (prop, val) ->
-					if data[schema].d3Data.hasOwnProperty(prop)
-						data[schema].d3Data[prop].push(val)
-					else
-						data[schema].d3Data[prop] = [val]
-						
+					data[schema].d3Data[prop].push(val)
+				data[schema].d3Data["d3_ID"].push(obj.id)
 			
 			else
 				if d3Data is undefined or d3Data is null
 					return true
 				# we just have a scalar data element
-				schema_count++
-				schema = schema_count
-				data[schema] = {}
-				data[schema].schema = ["scalar"]
-				data[schema].d3Data = {"scalar": [d3Data]}
-				data[schema].visData = @extractVisSchema(node)
-				data[schema].visSchema = _.keys(data[schema].visData)
+				schema = @findSchema(data, d3Data, node.tagName)
+				if schema == -1
+					schema_count++
+					schema = schema_count
+					data[schema] = {}
+					data[schema].schema = ["scalar"]
+					data[schema].d3Data = {"d3_ID": [obj.id], "scalar": [d3Data]}
+					data[schema].visData = @extractVisSchema(node)
+					data[schema].visSchema = _.keys(data[schema].visData)
+				else
+					data[schema].d3Data["scalar"].push(d3Data)
+					data[schema].d3Data["d3_ID"].push(obj.id)
+					
 			
 			# finally extract the visual attributes
-			visRow = @extractVisData(node, obj.cssText, obj.bbox)
+			visRow = @extractVisData(node, obj.nodeText, obj.cssText, obj.bbox)
 			$.each Object.keys(data[schema].visData), (j, key) ->
 				data[schema].visData[key].push(visRow[key])
 		
@@ -191,6 +225,29 @@ getMappings = (dataSet) ->
 					mappings[dataAttr].push([visAttr, mapping])
 				else
 					mappings[dataAttr] = [[visAttr, mapping]]
+	
+	#now that we have all mappings, filter out nominal for which there is also a linear
+	visAttrsWithLinear = []
+	for dataAttr, visAttrs of mappings
+		for visAttrMap in visAttrs
+			if visAttrMap[1].hasOwnProperty('isNumericMapping')
+				if not (visAttrMap[0] in visAttrsWithLinear)
+					visAttrsWithLinear.push(visAttrMap[0])
+	
+	console.log "linear maps: #{visAttrsWithLinear}"
+	
+	for dataAttr, visAttrs of mappings
+		removed = 0
+		for ind in [0..visAttrs.length-1]
+			console.log visAttrs
+			visAttrMap = visAttrs[ind-removed]
+			if !visAttrMap[1].hasOwnProperty('isNumericMapping') and 
+			visAttrMap[0] in visAttrsWithLinear
+				console.log "removing..."
+				console.log visAttrMap
+				visAttrs.splice(ind-removed, 1)
+				++removed;
+	
 	return mappings
 	
 getMapping = (dataAttr, visAttr, dataSet) ->
@@ -281,12 +338,31 @@ getSelectedSet = (dataSet) ->
 
 restylingApp = angular.module('restylingApp', [])
 
-restylingApp.controller 'MappingListCtrl', ($scope) ->
+restylingApp.controller 'MappingListCtrl', ($scope, orderByFilter) ->
 	$scope._ = _
 	$scope.currentDataSet = 0
 	$scope.chosenMappings = null
 	$scope.addMappingDialog = false
 	$scope.addForm = { }
+	
+	$scope.removeMapping = (dataField, mappedAttr) ->
+		dataSet = $scope.dataSets[$scope.currentDataSet]
+		for mapping in dataSet.mappings[dataField]
+			if mapping[0] == mappedAttr[0]
+				ind = dataSet.mappings[dataField].indexOf(mapping)
+				dataSet.mappings[dataField].splice(ind, 1)
+				break
+		
+		for ind in [0..dataSet.visData[mappedAttr[0]]-1]
+			dataSet.visData[mappedAttr[0]][ind] = dataSet.visData[mappedAttr[0]][0]
+		
+		message = 
+			type: "update"
+			attr: mappedAttr[0]
+			val: dataSet.visData[mappedAttr[0]][0]
+			nodes: dataSet['ids']
+		console.log message
+		window.connector.sendUpdate(message)
 	
 	$scope.getSelections = ->
 		sels = $scope.dataSets[$scope.currentDataSet].selections
@@ -302,6 +378,19 @@ restylingApp.controller 'MappingListCtrl', ($scope) ->
 			val: $scope.addForm.changedAttrValue
 			nodes: $scope.getSelections()
 		window.connector.sendUpdate(message)
+		$scope.updateData(message)
+		
+	$scope.updateData = (updateMessage) ->
+		attr = updateMessage.attr
+		val = updateMessage.val
+		ids = updateMessage.nodes
+		for id in ids
+			dataSet = $scope.dataSets[$scope.currentDataSet]
+			ind = dataSet['ids'].indexOf(id)
+			if attr in ["x-position", "y-position", "width", "height"]
+				val = parseFloat(val)
+			dataSet.visData[attr][ind] = val
+			#console.log "setting #{attr} to #{val}"
 	
 	$scope.setChosenMappings = ->
 		$scope.addMappingDialog = false
@@ -309,6 +398,27 @@ restylingApp.controller 'MappingListCtrl', ($scope) ->
 		#console.log $scope.dataSets
 		#console.log $scope.chosenMappings
 	
+	$scope.getIndexForDataVal = (attr, val) ->
+		dataSet = $scope.dataSets[$scope.currentDataSet]
+		return dataSet.d3Data[attr].indexOf(val)
+		
+	$scope.submitAttrClassChange = ($event, attrClass, attrName) ->
+		if $event.keyCode is 13 #enter key
+			dataSet = $scope.dataSets[$scope.currentDataSet]
+			newVal = angular.element($event.target).val()
+			inds = []
+			for val, i in dataSet.visData[attrName]
+				if val == attrClass
+					inds.push(i)
+			
+			ids = _.map(inds, (ind) -> dataSet['ids'][ind])
+			message =
+				type: "update"
+				attr: attrName
+				val: newVal
+				nodes: ids
+			window.connector.sendUpdate(message)
+		
 	$scope.submitNewLinearMapping = ($event) ->
 		if $event.keyCode is 13
 			data = $scope.dataSets[$scope.currentDataSet]
@@ -353,10 +463,22 @@ restylingApp.controller 'MappingListCtrl', ($scope) ->
 					nodes: [id]
 				#console.log message
 				window.connector.sendUpdate(message)
+	
+	$scope.isMapped = (visAttr) ->
+		dataSet = $scope.dataSets[$scope.currentDataSet]
+		console.log dataSet.mappings
+		for dataField of dataSet.mappings
+			for mapping in dataSet.mappings[dataField]
+				if mapping[0] == visAttr
+					console.log "#{mapping} -- #{visAttr}"
+					return true
+		return false
 			
-	$scope.submitNominalMappingChange = ($event, dataAttr, mappedAttr, newIds) ->
+	$scope.submitNominalMappingChange = ($event, dataAttr, mappedAttr, mapped_to) ->
 		if $event.keyCode is 13 #enter key
 			newCategoryVal = angular.element($event.target).val()
+			newIds = mapped_to[1]
+			mapped_to[0][0] = newCategoryVal
 			message =
 				type: "update"
 				attr: mappedAttr
@@ -366,34 +488,42 @@ restylingApp.controller 'MappingListCtrl', ($scope) ->
 			
 	$scope.selectDataSet = (dataSet) ->
 		$scope.currentDataSet = $scope.dataSets.indexOf(dataSet)
+		$scope.setChosenMappings()
+		$scope.currentDialog = "viewMappingDialog"
 	
 	$scope.getMappings = ->
-		$scope.currentMappings = []
-		if (not $scope.dataSets[$scope.currentDataSet].selections) or 
-				$scope.dataSets[$scope.currentDataSet].selections.length == 0
-			$scope.dataSets[$scope.currentDataSet].mappings = 
-				getMappings($scope.dataSets[$scope.currentDataSet])
+		#$scope.currentMappings = []
+		#console.log $scope.dataSets[$scope.currentDataSet].selections
+		#console.log $scope.dataSets[$scope.currentDataSet]
+		#if (not $scope.dataSets[$scope.currentDataSet].selections) or 
+		#		$scope.dataSets[$scope.currentDataSet].selections.length == 0
+		$scope.dataSets[$scope.currentDataSet].mappings = 
+			getMappings($scope.dataSets[$scope.currentDataSet])
+		###
 		else
 			selectedSet = getSelectedSet($scope.dataSets[$scope.currentDataSet])
+			console.log selectedSet
 			$scope.selectedSet = selectedSet
 			$scope.dataSets[$scope.currentDataSet].mappings = 
 				getMappings(selectedSet)
+		###
 	
-	$scope.toggleSelect = (dataSetIndex, elemIndex) ->
-		if not $scope.dataSets[dataSetIndex].selections
-			$scope.dataSets[dataSetIndex].selections = [elemIndex]
+	$scope.toggleSelect = (dataSet, elemIndex) ->
+		if not dataSet.selections
+			dataSet.selections = [elemIndex]
 		else
-			if elemIndex in $scope.dataSets[dataSetIndex].selections
-				$scope.dataSets[dataSetIndex].selections = _.without($scope.dataSets[dataSetIndex].selections, elemIndex)
+			if elemIndex in dataSet.selections
+				dataSet.selections = _.without(dataSet.selections, elemIndex)
 			else
-				$scope.dataSets[dataSetIndex].selections.push(elemIndex)
-		$scope.getMappings()
+				dataSet.selections.push(elemIndex)
+		console.log dataSet.selections
+		#$scope.getMappings()
 		
-	$scope.itemClass = (dataSetIndex, elemIndex) ->
-		if not $scope.dataSets[dataSetIndex].hasOwnProperty('selections')
+	$scope.itemClass = (dataSet, elemIndex) ->
+		if not dataSet.hasOwnProperty('selections')
 			return undefined
 			
-		if elemIndex in $scope.dataSets[dataSetIndex].selections
+		if elemIndex in dataSet.selections
 			return 'selected'
 		return undefined
 
@@ -419,30 +549,209 @@ prepareMarkForDisplay = (nodeText, cssText) ->
 		
 
 restylingApp.directive 'svgInject', ($compile) ->
-	return link: (scope, element, attrs, controller) ->
-		svg = document.createElementNS("http://www.w3.org/2000/svg", "svg")
-		canvasWidth = 30
-		svg.setAttribute("width", "30")
-		svg.setAttribute("height", "30")
-		element[0].appendChild(svg)
-		markInfo = scope.dataSet['node'][scope.i]
-		maxWidthNode = _.max(scope.dataSet['node'], (markInfo) -> markInfo.bbox.width)
-		maxHeightNode = _.max(scope.dataSet['node'], (markInfo) -> markInfo.bbox.height)
-		mark = prepareMarkForDisplay(markInfo['tag'], markInfo['css'])
-		svg.appendChild(mark)
-		bbox =  mark.getBBox()
-		scaleDimVal = maxHeightNode.bbox.height
-		maxNode = maxHeightNode
-		if maxWidthNode.bbox.width > maxHeightNode.bbox.height
-			maxNode = maxWidthNode
-			scaleDimVal = maxWidthNode.bbox.width
-			
-		newTranslate = "translate(" + canvasWidth/2 + "," + canvasWidth/2 + ")"
-		newScale = "scale(" + (canvasWidth-10)/scaleDimVal + "," + (canvasWidth-10)/scaleDimVal + ")"
-		d3.select(mark).attr("transform", newTranslate + newScale)
-		#angular.element(element).html(angular.element(element).html())
+	return {
+		scope: {
+			ind: '=ind',
+			data: '=data'
+		}
+		link: (scope, element, attrs, controller) ->
+			scope.$watch "data['node'][ind]", ((newValue, oldValue) -> 
+				svg = document.createElementNS("http://www.w3.org/2000/svg", "svg")
+				canvasWidth = 20
+				svg.setAttribute("width", "20")
+				svg.setAttribute("height", "20")
+				$.each element[0].children, (e, i) ->
+					$(this).remove()
+				element[0].appendChild(svg)
+				
+				markInfo = scope.data['node'][scope.ind]
+
+				maxWidth = _.max(scope.data.visData['width'])
+				maxHeight = _.max(scope.data.visData['height'])
+				mark = prepareMarkForDisplay(markInfo['tag'], markInfo['css'])
+				#mark = prepareMarkFromVisData(scope.dataSet['node'].visData, scope.i)
+				svg.appendChild(mark)
+				scaleDimVal = maxHeight
+				#maxNode = maxHeightNode
+				if maxWidth > maxHeight
+					#maxNode = maxWidthNode
+					scaleDimVal = maxWidth
+				
+				#console.log transformedBoundingBox(mark)
+				#console.log scaleDimVal
+				newTranslate = svg.createSVGTransform()
+				newTranslate.setTranslate(canvasWidth / 2, canvasWidth / 2)
+				newScale = svg.createSVGTransform()
+				newScale.setScale((canvasWidth-5) / scaleDimVal, (canvasWidth-5) / scaleDimVal)
+				mark.transform.baseVal.appendItem(newTranslate)
+				scaleNode(mark, scope.data.visData['width'][scope.ind], scope.data.visData['height'][scope.ind], svg)
+				mark.transform.baseVal.appendItem(newScale)
+				#d3.select(mark).attr("transform", newTranslate + newScale)
+				#console.log transformedBoundingBox(mark)
+				), true
+		}
+# Calculate the bounding box of an element with respect to its parent element
+transformedBoundingBox = (el, to) ->
+	bb = el.getBBox()
+	svg = el.ownerSVGElement
+	unless to
+		to = svg
+	m = el.getTransformToElement(to)
+	
+	# Create an array of all four points for the original bounding box
+	pts = [
+    svg.createSVGPoint(), svg.createSVGPoint(),
+    svg.createSVGPoint(), svg.createSVGPoint()
+	]
+	
+	pts[0].x=bb.x
+	pts[0].y=bb.y
+	pts[1].x=bb.x+bb.width
+	pts[1].y=bb.y
+	pts[2].x=bb.x+bb.width
+	pts[2].y=bb.y+bb.height
+	pts[3].x=bb.x
+	pts[3].y=bb.y+bb.height;
+
+  # Transform each into the space of the parent,
+  # and calculate the min/max points from that.    
+	xMin=Infinity
+	xMax=-Infinity
+	yMin=Infinity
+	yMax=-Infinity
+	for pt in pts
+		pt = pt.matrixTransform(m)
+		xMin = Math.min(xMin,pt.x)
+		xMax = Math.max(xMax,pt.x)
+		yMin = Math.min(yMin,pt.y)
+		yMax = Math.max(yMax,pt.y)
+
+  # Update the bounding box with the new values
+	bb.x = xMin
+	bb.width  = xMax-xMin
+	bb.y = yMin
+	bb.height = yMax-yMin
+	return bb
+
+window.transformedBoundingBox = transformedBoundingBox
+
+scaleNode = (node, width, height, svg) ->
+	scale = svg.createSVGTransform()
+	bbox = window.transformedBoundingBox(node)
+	
+	#console.log "scaling: #{width}, #{height}"
+	#console.log bbox
+	if bbox.width == 0
+		scale.setScale(1, height / bbox.height)
+	else if bbox.height == 0
+		scale.setScale(width / bbox.width, 1)
+	else
+		#console.log "width: #{width}, height: #{height}"
+		scale.setScale((width / bbox.width), (height / bbox.height))
+	node.transform.baseVal.appendItem(scale)
+	bbox = window.transformedBoundingBox(node)
+
+updateNode = (origNode, origBBox, attr, val) ->
+	parentNode = origNode.parentElement
+	svg = getRootSVG(origNode)
+	clone = null
+	currentTag = origNode.tagName.toLowerCase()
+	
+	if attr is "shape"
+		clone = getNodeFromShape(val)
+	else if currentTag is "polygon"
+		clone = getNodeFromShape(currentTag, origNode.getAttribute("points"))
+	else
+		clone = getNodeFromShape(currentTag)
+		
+	parentNode.appendChild(clone)
+	bbox = transformedBoundingBox(clone, svg)
+	#console.log bbox
+	#console.log clone
+	
+	for currAttr in origNode.attributes
+		if not (currAttr.name in ["id", "cx", "cy", "x", "y", "r", "transform", "points", "clip-path", "requiredFeatures", "systemLanguage", "requiredExtensions", "vector-effect"])
+			clone.setAttribute(currAttr.name, currAttr.value)
+	clone.setAttribute("vector-effect", "non-scaling-stroke")
+
+	if attr is "color"
+		attr = "fill"
+		d3.select(clone).style("fill", val)			
+	else if not (attr in ["x-position", "y-position", "shape", "width", "height"])
+		d3.select(clone).attr(attr, val)
+	
+	translate = svg.createSVGTransform()
+	parentTrans = origNode.getTransformToElement(svg)
+	trans = clone.getTransformToElement(svg)
+	parentOffset = [0, 0]
+	if currentTag is "circle"
+		cx = parseFloat(d3.select(origNode).attr("cx"))
+		cy = parseFloat(d3.select(origNode).attr("cy"))
+		if cx then parentOffset[0] = cx
+		if cy then parentOffset[1] = cy
+	else if currentTag is "rect"
+		x = parseFloat(d3.select(origNode).attr("x"))
+		y = parseFloat(d3.select(origNode).attr("y"))
+		if x then parentOffset[0] = x
+		if y then parentOffset[1] = y
+	translate.setTranslate(parentTrans.e-trans.e+parentOffset[0], parentTrans.f-trans.f+parentOffset[1])
+	clone.transform.baseVal.appendItem(translate)
+		
+	if attr is "x-position"
+		newX = parseFloat(val)
+		xtranslate = svg.createSVGTransform()
+		xtranslate.setTranslate(newX-origBBox.x, 0)
+		clone.transform.baseVal.appendItem(xtranslate)
+	else if attr is "y-position"
+		newY = parseFloat(val)
+		ytranslate = svg.createSVGTransform()
+		ytranslate.setTranslate(0, newY-origBBox.y)
+		clone.transform.baseVal.appendItem(ytranslate)
+		
+	scale = svg.createSVGTransform()
+	if val is "circle"
+		if origBBox.width < origBBox.height
+			scale.setScale(origBBox.width / bbox.width,origBBox.width / bbox.width)
+		else
+			scale.setScale(origBBox.height / bbox.height,origBBox.height / bbox.height)
+	else if attr is "width"
+		newWidth = parseFloat(val)
+		scale.setScale((newWidth / bbox.width), (origBBox.height / bbox.height))
+	else if attr is "height"
+		newHeight = parseFloat(val)
+		scale.setScale((origBBox.width / bbox.width), (newHeight / bbox.height))			
+	else 
+		scale.setScale((origBBox.width / bbox.width), (origBBox.height / bbox.height))
+	clone.transform.baseVal.appendItem(scale)
+	
+	#console.log clone
+	
+
+###		
+prepareMarkFromVisData = (visData, i) ->
+	newNode = document.createElementNS("http://www.w3.org/2000/svg", visData["shape"][i])
+	d3.select(newNode).style("fill", visData["color"][i])
+	d3.select(newNode).style("stroke", visData["stroke"][i])
+	d3.select(newNode).attr("stroke-width", visData["stroke-width"][i])
+	
+	newTranslate = "translate(" + canvasWidth / 2 + "," + canvasWidth / 2 + ")"
+	
+	return {"shape": [], "color": [], "stroke": [], \ 
+						"stroke-width": [], "width": [], "height": [], "area": [], "x-position": [], "y-position": []}
+###
 		
 $(document).ready () ->
 	connector = new VisConnector()
 	remappingForm = null
 	window.connector = connector
+	
+setupModal = () ->
+	$('table').on 'contextmenu', (event) ->
+		event.preventDefault()
+		scope = angular.element(event.target).scope()
+		console.log scope.dataSet
+		scope.$apply () ->
+			#scope.currentDataSet = scope.dataSets.indexOf(dataSet)
+			scope.selectDataSet(scope.dataSet)
+		
+		$("#attrEditor").modal()
