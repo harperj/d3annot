@@ -64,7 +64,7 @@ class VisUpdater
 		selection.each (d, i) ->
 			item = {}
 			console.log this.tagName.toLowerCase()
-			if this.tagName.toLowerCase() in ['g', 'svg', 'defs', 'clippath']
+			if this.tagName.toLowerCase() in ['g', 'svg', 'defs', 'clippath', 'path']
 				return true
 			if this.parentElement.tagName.toLowerCase() is 'clippath'
 				return true
@@ -113,13 +113,20 @@ class VisUpdater
 		else
 			clone = getNodeFromShape(currentTag)
 			
+		# fix for lines, they need a size before bboxing
+		for currAttr in @elem_map[id]["current"].attributes
+			if currAttr.name in ["x1", "y1", "x2", "y2"]
+				clone.setAttribute(currAttr.name, currAttr.value)
+			
 		parentNode.appendChild(clone)
 		bbox = transformedBoundingBox(clone, svg)
 		console.log bbox
 		console.log clone
 		
 		for currAttr in @elem_map[id]["current"].attributes
-			if not (currAttr.name in ["id", "cx", "cy", "x", "y", "r", "transform", "points", "clip-path", "requiredFeatures", "systemLanguage", "requiredExtensions", "vector-effect"])
+			if not (currAttr.name in ["width", "height", "id", "cx", "cy", "x", 
+				"y", "r", "transform", "points", "clip-path", "requiredFeatures", "systemLanguage", 
+				"requiredExtensions", "vector-effect"])
 				clone.setAttribute(currAttr.name, currAttr.value)
 		clone.setAttribute("vector-effect", "non-scaling-stroke")
 
@@ -128,10 +135,10 @@ class VisUpdater
 			d3.select(clone).style("fill", val)			
 		else if not (attr in ["x-position", "y-position", "shape", "width", "height"])
 			d3.select(clone).attr(attr, val)
+
+		# Current elements might have translation in attributes.  
+		# If so we need to move the translation into an actual transform.
 		
-		translate = svg.createSVGTransform()
-		parentTrans = @elem_map[id]["current"].getTransformToElement(svg)
-		trans = clone.getTransformToElement(svg)
 		parentOffset = [0, 0]
 		if currentTag is "circle"
 			cx = parseFloat(d3.select(@elem_map[id]["current"]).attr("cx"))
@@ -143,36 +150,85 @@ class VisUpdater
 			y = parseFloat(d3.select(@elem_map[id]["current"]).attr("y"))
 			if x then parentOffset[0] = x
 			if y then parentOffset[1] = y
-		translate.setTranslate(parentTrans.e-trans.e+parentOffset[0], parentTrans.f-trans.f+parentOffset[1])
-		clone.transform.baseVal.appendItem(translate)
+
+		# Done handling attributes.  Now translation, then scaling.
+		currentX = @elem_map[id]["currentBBox"].x
+		currentY = @elem_map[id]["currentBBox"].y
+		currentCenterX = currentX + (@elem_map[id]["currentBBox"].width / 2)
+		currentCenterY = currentY + (@elem_map[id]["currentBBox"].height / 2)
+		cloneWidth = bbox.width
+		cloneHeight = bbox.height
+		currentWidth = @elem_map[id]["currentBBox"].width
+		currentHeight = @elem_map[id]["currentBBox"].height
+		
+		translate = svg.createSVGTransform()
+		parentTrans = @elem_map[id]["current"].getTransformToElement(svg)
+		trans = clone.getTransformToElement(svg)
 			
+		if clone.tagName.toLowerCase() in ["circle", "polygon"] and
+		not (currentTag in ["circle", "polygon"])
+			console.log "applying offset"
+			centerOffsetX = currentWidth / 2
+			centerOffsetY = currentHeight / 2
+			translate.setTranslate(parentTrans.e-trans.e+parentOffset[0]+centerOffsetX, parentTrans.f-trans.f+parentOffset[1]+centerOffsetY)
+		else if not (clone.tagName.toLowerCase() in ["circle", "polygon"]) and
+		currentTag in ["circle", "polygon"]
+			console.log "applying offset"
+			centerOffsetX = currentWidth / 2
+			centerOffsetY = currentHeight / 2
+			translate.setTranslate(parentTrans.e-trans.e+parentOffset[0]-centerOffsetX, parentTrans.f-trans.f+parentOffset[1]-centerOffsetY)
+		else
+			translate.setTranslate(parentTrans.e-trans.e+parentOffset[0], parentTrans.f-trans.f+parentOffset[1])
+			
+		clone.transform.baseVal.appendItem(translate)
+		
+		
+		# We'll do another translation based on our change to the position if necessary
 		if attr is "x-position"
 			newX = parseFloat(val)
 			xtranslate = svg.createSVGTransform()
-			xtranslate.setTranslate(newX-@elem_map[id]["currentBBox"].x, 0)
+			xtranslate.setTranslate(newX-currentCenterX, 0)
 			clone.transform.baseVal.appendItem(xtranslate)
 		else if attr is "y-position"
 			newY = parseFloat(val)
 			ytranslate = svg.createSVGTransform()
-			ytranslate.setTranslate(0, newY-@elem_map[id]["currentBBox"].y)
-			clone.transform.baseVal.appendItem(ytranslate)
+			ytranslate.setTranslate(0, newY-currentCenterY)
+			clone.transform.baseVal.appendItem(ytranslate)	
+		
 			
 		scale = svg.createSVGTransform()
-		if val is "circle"
-			if @elem_map[id]["currentBBox"].width < @elem_map[id]["currentBBox"].height
-				scale.setScale(@elem_map[id]["currentBBox"].width / bbox.width,@elem_map[id]["currentBBox"].width / bbox.width)
-			else
-				scale.setScale(@elem_map[id]["currentBBox"].height / bbox.height,@elem_map[id]["currentBBox"].height / bbox.height)
-		else if attr is "width"
+		if bbox.width == 0
+			cloneWidth = 1
+		if bbox.height == 0
+			cloneHeight = 1
+		if currentWidth == 0
+			currentWidth = 1
+		if currentHeight == 0
+			currentHeight = 1
+			
+
+		if attr is "width"
 			newWidth = parseFloat(val)
-			scale.setScale((newWidth / bbox.width), (@elem_map[id]["currentBBox"].height / bbox.height))
+			console.log cloneWidth
+			scale.setScale((newWidth / cloneWidth), (currentHeight / cloneHeight))
+			offCenterTranslate = svg.createSVGTransform()
+			unless currentTag in ["circle", "polygon"]
+				newCenterX = currentX + newWidth / 2
+				offCenterTranslate.setTranslate(currentCenterX - newCenterX, 0)
+				clone.transform.baseVal.appendItem(offCenterTranslate)			
 		else if attr is "height"
 			newHeight = parseFloat(val)
-			scale.setScale((@elem_map[id]["currentBBox"].width / bbox.width), (newHeight / bbox.height))			
+			scaleFactor = newHeight / cloneHeight
+			scale.setScale(currentWidth / cloneWidth, scaleFactor)	
+			offCenterTranslate = svg.createSVGTransform()
+			unless currentTag in ["circle", "polygon"]
+				newCenterY = currentY + newHeight / 2
+				offCenterTranslate.setTranslate(0, currentCenterY - newCenterY)
+				clone.transform.baseVal.appendItem(offCenterTranslate)										
 		else 
-			scale.setScale((@elem_map[id]["currentBBox"].width / bbox.width), (@elem_map[id]["currentBBox"].height / bbox.height))
+			scale.setScale(currentWidth / cloneWidth, currentHeight / cloneHeight)
 		clone.transform.baseVal.appendItem(scale)
-		
+
 		@elem_map[id]["currentBBox"] = transformedBoundingBox(clone, svg)
 		return clone	
 		

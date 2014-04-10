@@ -97,8 +97,8 @@ class VisConnector
 			visRow["stroke"] = styleStroke
 			
 		visRow["stroke-width"] = nodeAttrs["stroke-width"]
-		visRow["x-position"] = bbox.x
-		visRow["y-position"] = bbox.y
+		visRow["x-position"] = bbox.x + (bbox.width / 2)
+		visRow["y-position"] = bbox.y + (bbox.height / 2)
 		if visRow["shape"] == "circle"
 			visRow["width"] = 2 * parseFloat(nodeAttrs["r"])
 			visRow["height"] = 2 * parseFloat(nodeAttrs["r"])
@@ -154,7 +154,7 @@ class VisConnector
 					data[schema].schema = newSchema
 					# set the schema for data and visual attributes of this set
 					data[schema].d3Data = {}
-					data[schema].d3Data["d3_ID"] = []
+					data[schema].d3Data["deconID"] = []
 					$.each Object.keys(d3Data), (j, key) ->
 						data[schema].d3Data[key] = []
 						
@@ -165,7 +165,7 @@ class VisConnector
 				# now let's add the data item to our structure
 				$.each d3Data, (prop, val) ->
 					data[schema].d3Data[prop].push(val)
-				data[schema].d3Data["d3_ID"].push(obj.id)
+				data[schema].d3Data["deconID"].push(obj.id)
 			
 			else
 				if d3Data is undefined or d3Data is null
@@ -177,12 +177,12 @@ class VisConnector
 					schema = schema_count
 					data[schema] = {}
 					data[schema].schema = ["scalar"]
-					data[schema].d3Data = {"d3_ID": [obj.id], "scalar": [d3Data]}
+					data[schema].d3Data = {"deconID": [obj.id], "scalar": [d3Data]}
 					data[schema].visData = @extractVisSchema(node)
 					data[schema].visSchema = _.keys(data[schema].visData)
 				else
 					data[schema].d3Data["scalar"].push(d3Data)
-					data[schema].d3Data["d3_ID"].push(obj.id)
+					data[schema].d3Data["deconID"].push(obj.id)
 					
 			
 			# finally extract the visual attributes
@@ -234,17 +234,17 @@ getMappings = (dataSet) ->
 				if not (visAttrMap[0] in visAttrsWithLinear)
 					visAttrsWithLinear.push(visAttrMap[0])
 	
-	console.log "linear maps: #{visAttrsWithLinear}"
+	#console.log "linear maps: #{visAttrsWithLinear}"
 	
 	for dataAttr, visAttrs of mappings
 		removed = 0
 		for ind in [0..visAttrs.length-1]
-			console.log visAttrs
+			#console.log visAttrs
 			visAttrMap = visAttrs[ind-removed]
 			if !visAttrMap[1].hasOwnProperty('isNumericMapping') and 
 			visAttrMap[0] in visAttrsWithLinear
-				console.log "removing..."
-				console.log visAttrMap
+				#console.log "removing..."
+				#console.log visAttrMap
 				visAttrs.splice(ind-removed, 1)
 				++removed;
 	
@@ -264,6 +264,7 @@ getMapping = (dataAttr, visAttr, dataSet) ->
 		return getMappingNominal(dataAttrCol, visAttrCol, dataSet['ids'])
 	else
 		# quantitative/numeric
+		#console.log "#{dataAttr} -- #{visAttr}"
 		return getMappingNumeric(dataAttrCol, visAttrCol, dataSet['ids'])
 	return null
 			
@@ -296,21 +297,24 @@ getMappingNumeric = (col1, col2, ids) ->
 	col1 = _.map(col1, (v) -> parseFloat(v))
 	col2 = _.map(col2, (v) -> parseFloat(v))
 	zipped = _.zip(col1, col2)
-	linear_regression_line = ss.linear_regression().data(zipped).line()
+	linear_regression = ss.linear_regression().data(zipped)
+	linear_regression_line = linear_regression.line()
 	rSquared = ss.r_squared(zipped, linear_regression_line)
 	#console.log rSquared
 	if jStat.stdev(col1) is 0 or jStat.stdev(col2) is 0
 		return false
 	if rSquared > 0.95 and not(isNaN(rSquared))
+		#console.log rSquared
+		#console.log "#{linear_regression.m()} * x + #{linear_regression.b()}"
 		#console.log "NUMERIC!"
 		mapping.dataMin = _.min(col1)
 		mapping.dataMinIndex = col1.indexOf(mapping.dataMin)
 		mapping.dataMax = _.max(col1)
 		mapping.dataMaxIndex = col1.indexOf(mapping.dataMax)
-		mapping.visMin = _.min(col2)
-		mapping.visMinIndex = col2.indexOf(mapping.visMin)
-		mapping.visMax = _.max(col2)
-		mapping.visMaxIndex = col2.indexOf(mapping.visMax)
+		mapping.visMin = col2[mapping.dataMinIndex]
+		mapping.visMinIndex = mapping.dataMinIndex
+		mapping.visMax = col2[mapping.dataMaxIndex]
+		mapping.visMaxIndex = mapping.dataMaxIndex
 		mapping.isNumericMapping = true
 		mapping.ids = ids
 		return mapping
@@ -344,6 +348,22 @@ restylingApp.controller 'MappingListCtrl', ($scope, orderByFilter) ->
 	$scope.chosenMappings = null
 	$scope.addMappingDialog = false
 	$scope.addForm = { }
+	
+	$scope.addFormAction = (action) ->
+		$scope.addForm.action = action
+		if action == 'Nominal'
+			uniqVals = _.uniq($scope.dataSets[$scope.currentDataSet].d3Data[$scope.addForm.mapDataAttr])
+			$scope.addForm.nominalMapData = {}
+			for uniqVal in uniqVals
+				$scope.addForm.nominalMapData[uniqVal] = ''
+		
+	$scope.changeFormDataAttr = (attr = null) ->
+		$scope.addForm.mapDataAttr = attr
+		if $scope.addForm.action == 'Nominal'
+			$scope.addFormAction('Nominal')
+
+	$scope.clearAddForm = () ->
+		$scope.addForm = { }
 	
 	$scope.removeMapping = (dataField, mappedAttr) ->
 		dataSet = $scope.dataSets[$scope.currentDataSet]
@@ -466,13 +486,17 @@ restylingApp.controller 'MappingListCtrl', ($scope, orderByFilter) ->
 	
 	$scope.isMapped = (visAttr) ->
 		dataSet = $scope.dataSets[$scope.currentDataSet]
-		console.log dataSet.mappings
+		#console.log dataSet.mappings
 		for dataField of dataSet.mappings
 			for mapping in dataSet.mappings[dataField]
 				if mapping[0] == visAttr
-					console.log "#{mapping} -- #{visAttr}"
-					return true
+					#console.log "#{mapping} -- #{visAttr}"
+					return dataField
 		return false
+			
+	$scope.formCreateNominalMapping = ($event, dataAttrName, dataAttrCat) ->
+		if $event.keyCode is 13
+			console.log $scope.addForm.nominalMapData
 			
 	$scope.submitNominalMappingChange = ($event, dataAttr, mappedAttr, mapped_to) ->
 		if $event.keyCode is 13 #enter key
@@ -488,8 +512,19 @@ restylingApp.controller 'MappingListCtrl', ($scope, orderByFilter) ->
 			
 	$scope.selectDataSet = (dataSet) ->
 		$scope.currentDataSet = $scope.dataSets.indexOf(dataSet)
+		$scope.clearAddForm()
 		$scope.setChosenMappings()
 		$scope.currentDialog = "viewMappingDialog"
+		if $scope.dataSets[$scope.currentDataSet].selections and
+		$scope.dataSets[$scope.currentDataSet].selections.length > 0
+			$scope.selectedSet = getSelectedSet($scope.dataSets[$scope.currentDataSet])
+		else
+			$scope.selectedSet = $scope.dataSets[$scope.currentDataSet]
+	
+	$scope.nextIndex = 0
+	$scope.getNextIndex = () ->
+		return ++$scope.nextIndex
+	
 	
 	$scope.getMappings = ->
 		#$scope.currentMappings = []
@@ -516,8 +551,11 @@ restylingApp.controller 'MappingListCtrl', ($scope, orderByFilter) ->
 				dataSet.selections = _.without(dataSet.selections, elemIndex)
 			else
 				dataSet.selections.push(elemIndex)
-		console.log dataSet.selections
-		#$scope.getMappings()
+		#console.log dataSet.selections
+		if dataSet.selections and dataSet.selections.length > 0
+			$scope.selectedSet = getSelectedSet(dataSet)
+		else
+			$scope.selectedSet = dataSet
 		
 	$scope.itemClass = (dataSet, elemIndex) ->
 		if not dataSet.hasOwnProperty('selections')
@@ -535,6 +573,9 @@ prepareMarkForDisplay = (nodeText, cssText) ->
 		
 	for attr in htmlNode.attributes
 		svgNode.setAttribute(attr.name, attr.value)
+	svgNode.setAttribute("vector-effect","non-scaling-stroke")
+	if $(htmlNode).text()
+		svgNode.textContent = $(htmlNode).text()
 	
 	d3.select(svgNode).attr("transform", undefined)
 	# circle case
@@ -578,11 +619,11 @@ restylingApp.directive 'svgInject', ($compile) ->
 					scaleDimVal = maxWidth
 				
 				#console.log transformedBoundingBox(mark)
-				#console.log scaleDimVal
+				#console.log "scale dim val: #{scaleDimVal}"
 				newTranslate = svg.createSVGTransform()
 				newTranslate.setTranslate(canvasWidth / 2, canvasWidth / 2)
 				newScale = svg.createSVGTransform()
-				newScale.setScale((canvasWidth-5) / scaleDimVal, (canvasWidth-5) / scaleDimVal)
+				newScale.setScale((canvasWidth-2) / scaleDimVal, (canvasWidth-2) / scaleDimVal)
 				mark.transform.baseVal.appendItem(newTranslate)
 				scaleNode(mark, scope.data.visData['width'][scope.ind], scope.data.visData['height'][scope.ind], svg)
 				mark.transform.baseVal.appendItem(newScale)
@@ -641,13 +682,19 @@ scaleNode = (node, width, height, svg) ->
 	
 	#console.log "scaling: #{width}, #{height}"
 	#console.log bbox
-	if bbox.width == 0
-		scale.setScale(1, height / bbox.height)
+	widthScale = width / bbox.width
+	heightScale = height / bbox.height
+	if width == 0
+		widthScale = 1
+	else if bbox.width == 0
+		widthScale = width
+	if height == 0
+		heightScale = 1
 	else if bbox.height == 0
-		scale.setScale(width / bbox.width, 1)
-	else
-		#console.log "width: #{width}, height: #{height}"
-		scale.setScale((width / bbox.width), (height / bbox.height))
+		heightScale = height
+		
+	scale.setScale(widthScale, heightScale)
+	
 	node.transform.baseVal.appendItem(scale)
 	bbox = window.transformedBoundingBox(node)
 
@@ -749,7 +796,7 @@ setupModal = () ->
 	$('table').on 'contextmenu', (event) ->
 		event.preventDefault()
 		scope = angular.element(event.target).scope()
-		console.log scope.dataSet
+		#console.log scope.dataSet
 		scope.$apply () ->
 			#scope.currentDataSet = scope.dataSets.indexOf(dataSet)
 			scope.selectDataSet(scope.dataSet)
