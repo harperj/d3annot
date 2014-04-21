@@ -3,6 +3,11 @@ elemToLink = null
 lastNode = null
 num_links = 0
 
+getPointFromLine = (node, ind) ->
+	segList = node.animatedPathSegList
+	console.log "made it here"
+	return [segList[ind].x, segList[ind].y]
+
 # Calculate the bounding box of an element with respect to its parent element
 transformedBoundingBox = (el, to) ->
 	bb = el.getBBox()
@@ -59,45 +64,122 @@ class VisUpdater
 		
 	extractDataFromSelection: (selection) =>
 		data = []
-		id_counter = 0
+		@id_counter = 0
 		elem_map = []
-		selection.each (d, i) ->
+		selection = selection[0]
+		for node in selection
 			item = {}
-			console.log this.tagName.toLowerCase()
-			if this.tagName.toLowerCase() in ['g', 'svg', 'defs', 'clippath', 'path']
-				return true
-			if this.parentElement.tagName.toLowerCase() is 'clippath'
-				return true
+			#console.log this.tagName.toLowerCase()
+			unless node.tagName in ["rect", "circle", "path", "line", "polygon", "text"]
+				continue
+			#else if this.tagName.toLowerCase() in ['path']
+			#	parseLinePath(this.getAttribute('d'))
+			if node.parentElement.tagName.toLowerCase() is 'clippath'
+				continue
 				
-			if this instanceof SVGElement
-				item.id = id_counter
-				id_counter++;
-				item.d3Data = d3.select(this).node().__data__
-				item.nodeText = this.outerHTML
-				item.cssText = window.getComputedStyle(this, null).cssText
-				item.bbox = transformedBoundingBox(this, null)
+			if node instanceof SVGElement
+				item.id = @id_counter
+				@id_counter++;
+				item.d3Data = node.__data__
+				item.nodeText = node.outerHTML
+				item.cssText = window.getComputedStyle(node, null).cssText
+				item.bbox = transformedBoundingBox(node, null)
 				item.bbox = {height: item.bbox.height, width: item.bbox.width, x: item.bbox.x, y: item.bbox.y}
 				elem_map.push
-					"current": d3.select(this).node()
-					"currentBBox": transformedBoundingBox(d3.select(this).node())
+					"current": node
+					"currentBBox": transformedBoundingBox(node)
 				data.push(item)
-		
+				
+		#console.log data
 		@elem_map = elem_map
 		return data
 		
-	exportDataToVis: (data) ->
-		@data = data
+	exportSelectorDataToVis: (selector) ->
+		console.log "exporting selector data to vis"
+		@data = @extractDataFromSelection(d3.selectAll(selector))
+		console.log @data
 		@exportDataToVis(@data)
 		
-	exportSelectorDataToVis: (selector) ->
-		@data = @extractDataFromSelection(d3.selectAll(selector))
-		@exportDataToVis(@data)
+	addDataToVis: (data) ->
+		evt = document.createEvent "CustomEvent"
+		evt.initCustomEvent("addDataEvent", true, true, data)
+		document.dispatchEvent(evt)
 		
 	exportDataToVis: (data) ->
 		evt = document.createEvent "CustomEvent"
 		evt.initCustomEvent("dataExportEvent", true, true, data)
-		console.log evt
+		#console.log evt
 		document.dispatchEvent(evt)
+		
+	makeLine: (msg) ->
+		nodeIds = msg.ids
+		d = ""
+		baseNode = null
+		for nodeId,i in nodeIds
+			node = @elem_map[nodeId]["current"]
+			svgNode = getRootSVG(@elem_map[nodeId]["current"])
+			bbox = node.getBBox()
+			if i == 0
+				baseNode = node
+				d = d.concat("M")
+				d = d.concat("#{bbox.x},#{bbox.y}")
+			else
+				transform = node.getTransformToElement(baseNode)
+				pt = svgNode.createSVGPoint()
+				pt.x = bbox.x + (bbox.width / 2)
+				pt.y = bbox.y + (bbox.height / 2)
+				pt = pt.matrixTransform(transform)
+				d = d.concat("L#{pt.x},#{pt.y}")
+			
+		newLine = document.createElementNS("http://www.w3.org/2000/svg", "path")
+		newLine.setAttribute("d", d)
+		baseNode.parentNode.appendChild(newLine)
+		
+	breakLine: (data) ->
+		lineId = data.id
+		ptShape = data.shape
+		lineNode = @elem_map[lineId]["current"]
+		svg = getRootSVG(@elem_map[lineId]["current"])
+		
+		dataArray = null
+		otherAttrs = {}
+		if lineNode.__data__ instanceof Array
+			dataArray = lineNode.__data__
+		else if lineNode.__data__ instanceof Object
+			for attr, val of lineNode.__data__
+				if val instanceof Array
+					dataArray = val
+				else
+					otherAttrs[attr] = val
+		
+		segList = lineNode.animatedPathSegList
+		#console.log "made it here"
+		newDataSet = []
+		for seg, i in lineNode.animatedPathSegList
+			ptNode = getNodeFromShape(ptShape)
+			lineNode.parentNode.appendChild(ptNode)
+			translate = svg.createSVGTransform()
+			translate.setTranslate(seg.x, seg.y)
+			ptNode.transform.baseVal.appendItem(translate)
+			newElem = {}
+			newElem.id = @id_counter
+			@id_counter++;
+			
+			newElem.d3Data = dataArray[i]
+			for attr, val of otherAttrs
+				newElem.d3Data[attr] = val
+			
+			newElem.nodeText = ptNode.outerHTML
+			newElem.cssText = window.getComputedStyle(ptNode, null).cssText
+			newElem.bbox = transformedBoundingBox(ptNode)
+			newElem.bbox = {height: newElem.bbox.height, width: newElem.bbox.width, x: newElem.bbox.x, y: newElem.bbox.y}
+			@elem_map.push
+				"current": ptNode
+				"currentBBox": transformedBoundingBox(ptNode)
+			newDataSet.push(newElem)
+		
+		@addDataToVis(newDataSet)
+		$(lineNode).remove()
 		
 	getUpdatedClone: (id, attr, val) ->
 		currentBBox = @elem_map[id]["currentBBox"]
@@ -106,33 +188,44 @@ class VisUpdater
 		clone = null
 		currentTag = @elem_map[id]["current"].tagName.toLowerCase()
 		
+		
+		
 		if attr is "shape"
 			clone = getNodeFromShape(val)
 		else if currentTag is "polygon"
 			clone = getNodeFromShape(currentTag, @elem_map[id]["current"].getAttribute("points"))
+		else if currentTag is "path"
+			clone = getNodeFromShape(currentTag, @elem_map[id]["current"].getAttribute("d"))
 		else
 			clone = getNodeFromShape(currentTag)
 			
 		# fix for lines, they need a size before bboxing
 		for currAttr in @elem_map[id]["current"].attributes
-			if currAttr.name in ["x1", "y1", "x2", "y2"]
+			if currAttr.name in ["x1", "y1", "x2", "y2", "dy"]
 				clone.setAttribute(currAttr.name, currAttr.value)
+		
+		#if we are a text node we need to fill in the text before taking size
+		if $(@elem_map[id]["current"]).text() != ""
+			clone.textContent = $(@elem_map[id]["current"]).text()
 			
 		parentNode.appendChild(clone)
 		bbox = transformedBoundingBox(clone, svg)
-		console.log bbox
-		console.log clone
+		#console.log bbox
+		#console.log clone
 		
 		for currAttr in @elem_map[id]["current"].attributes
 			if not (currAttr.name in ["width", "height", "id", "cx", "cy", "x", 
-				"y", "r", "transform", "points", "clip-path", "requiredFeatures", "systemLanguage", 
+				"y", "r", "transform", "points", "requiredFeatures", "systemLanguage", 
 				"requiredExtensions", "vector-effect"])
 				clone.setAttribute(currAttr.name, currAttr.value)
 		clone.setAttribute("vector-effect", "non-scaling-stroke")
 
-		if attr is "color"
+		if attr is "fill-color"
 			attr = "fill"
 			d3.select(clone).style("fill", val)			
+		else if attr is "stroke-color"
+			attr = "stroke"
+			d3.select(clone).style(attr, val)
 		else if not (attr in ["x-position", "y-position", "shape", "width", "height"])
 			d3.select(clone).attr(attr, val)
 
@@ -145,7 +238,7 @@ class VisUpdater
 			cy = parseFloat(d3.select(@elem_map[id]["current"]).attr("cy"))
 			if cx then parentOffset[0] = cx
 			if cy then parentOffset[1] = cy
-		else if currentTag is "rect"
+		else if currentTag in ["rect", "text"]
 			x = parseFloat(d3.select(@elem_map[id]["current"]).attr("x"))
 			y = parseFloat(d3.select(@elem_map[id]["current"]).attr("y"))
 			if x then parentOffset[0] = x
@@ -167,17 +260,20 @@ class VisUpdater
 			
 		if clone.tagName.toLowerCase() in ["circle", "polygon"] and
 		not (currentTag in ["circle", "polygon"])
-			console.log "applying offset"
+			#console.log "applying offset"
 			centerOffsetX = currentWidth / 2
 			centerOffsetY = currentHeight / 2
+			#console.log "current transform: #{parentTrans.e-trans.e+parentOffset[0]+centerOffsetX} , #{parentTrans.f-trans.f+parentOffset[1]+centerOffsetY}"
 			translate.setTranslate(parentTrans.e-trans.e+parentOffset[0]+centerOffsetX, parentTrans.f-trans.f+parentOffset[1]+centerOffsetY)
 		else if not (clone.tagName.toLowerCase() in ["circle", "polygon"]) and
 		currentTag in ["circle", "polygon"]
-			console.log "applying offset"
+			#console.log "applying offset"
 			centerOffsetX = currentWidth / 2
 			centerOffsetY = currentHeight / 2
+			#console.log "current transform: #{parentTrans.e-trans.e+parentOffset[0]-centerOffsetX} , #{parentTrans.f-trans.f+parentOffset[1]-centerOffsetY}"
 			translate.setTranslate(parentTrans.e-trans.e+parentOffset[0]-centerOffsetX, parentTrans.f-trans.f+parentOffset[1]-centerOffsetY)
 		else
+			#console.log "current transform: #{parentTrans.e-trans.e+parentOffset[0]} , #{parentTrans.f-trans.f+parentOffset[1]}"
 			translate.setTranslate(parentTrans.e-trans.e+parentOffset[0], parentTrans.f-trans.f+parentOffset[1])
 			
 		clone.transform.baseVal.appendItem(translate)
@@ -209,7 +305,7 @@ class VisUpdater
 
 		if attr is "width"
 			newWidth = parseFloat(val)
-			console.log cloneWidth
+			#console.log cloneWidth
 			scale.setScale((newWidth / cloneWidth), (currentHeight / cloneHeight))
 			offCenterTranslate = svg.createSVGTransform()
 			unless currentTag in ["circle", "polygon"]
@@ -289,13 +385,41 @@ getNodeFromShape = (val, currentPts = null) ->
 	else if val is "polygon"
 		clone = document.createElementNS("http://www.w3.org/2000/svg", "polygon")
 		clone.setAttribute("points", currentPts)
+	else if val is "path"
+		clone = document.createElementNS("http://www.w3.org/2000/svg", val)
+		clone.setAttribute("d", currentPts)
 	else
 		clone = document.createElementNS("http://www.w3.org/2000/svg", val)
 	return clone
 				
+parseLinePath = (dString) ->
+	if dString[0] != 'M'
+		return
+	sliceCount = 1
+	
+	rest = dString.slice(sliceCount)
+	xVal = parseFloat(rest)
+	if isNaN(xVal)
+		return false	
+	sliceCount += xVal.toString().length
+	rest = dString.slice(sliceCount)
+	if rest[0] != ","
+		return false
+	sliceCount++
+	rest = dString.slice(sliceCount)
+	yVal = parseFloat(rest)
+	
+	#console.log "#{xVal} , #{yVal}"
+
 visUpdater = new VisUpdater()
 document.addEventListener 'visUpdateEvent', (event) ->
 	visUpdater.update(event.detail)
+	
+document.addEventListener 'breakLineEvent', (event) ->
+	visUpdater.breakLine(event.detail)
+
+document.addEventListener 'makeLineEvent', (event) ->
+	visUpdater.makeLine(event.detail)
 
 extractHoveredElement = (elem) ->
 	elem = elem.target or elem.srcElement
@@ -312,8 +436,9 @@ saveDataJSON = (selector) ->
 	saveAs(blob, "extracted_data.json")
 
 $(document).bind "contextmenu", (event) ->
-	event.preventDefault()
 	ancestorSVG = $(event.target).closest("svg")
+	#console.log ancestorSVG
 	if ancestorSVG.length > 0
+		event.preventDefault()
 		svgChildren = $(ancestorSVG).find('*')
 		visUpdater.exportDataToVis(visUpdater.extractDataFromSelection(d3.selectAll(svgChildren)))

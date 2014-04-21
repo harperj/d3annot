@@ -3,10 +3,18 @@ class VisRemapper
 		# Listener for data export from injected script.
 		document.addEventListener 'dataExportEvent', (event) =>
 			@data = event.detail
+			console.log @data
 			chrome.runtime.sendMessage type: "init", (response) =>
 				chrome.runtime.sendMessage 
 					type: "syn"
 					payload: @data
+					
+		document.addEventListener 'addDataEvent', (event) =>
+			for elem in event.detail
+				@data.push(elem)
+			chrome.runtime.sendMessage
+				type: "addData"
+				payload: event.detail
 		
 		# Listener for mark data to update
 		document.addEventListener 'markUpdateEvent', (event) =>
@@ -20,15 +28,22 @@ class VisRemapper
 			port.onMessage.addListener(@displayResponse)
 	
 	displayResponse: (msg) ->
-		console.log msg
+		#console.log msg
 		if msg.type == "update"
 			evt = document.createEvent "CustomEvent"
 			evt.initCustomEvent("visUpdateEvent", true, true, msg)
 			document.dispatchEvent(evt)
+		if msg.type == "breakLine"
+			evt = document.createEvent "CustomEvent"
+			evt.initCustomEvent("breakLineEvent", true, true, msg)
+			document.dispatchEvent(evt)
+		if msg.type == "makeLine"
+			evt = document.createEvent "CustomEvent"
+			evt.initCustomEvent("makeLineEvent", true, true, msg)
+			document.dispatchEvent(evt)
 		  
 		
-
-
+		
 createReplacement = (node) ->
 	square = document.createElementNS("http://www.w3.org/2000/svg", "rect")
 	square.setAttribute("x", -parseFloat(d3.select(node).attr("r")))
@@ -72,5 +87,6 @@ $(document).ready ->
 injectJS(chrome.extension.getURL('lib/jquery.js'))
 injectJS(chrome.extension.getURL('lib/FileSaver.js'))
 injectJS(chrome.extension.getURL('lib/raphael-min.js'))
+injectCSS('http://fonts.googleapis.com/css?family=Tauri')
 # wait to inject final script so that dependencies will be picked up first
 waitToInject()

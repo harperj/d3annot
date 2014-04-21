@@ -115,7 +115,7 @@
 					Data Field:
 					<div class="btn-group">
 			  		<button id="dataSelectorButton" type="button" class="btn btn-default dropdown-toggle deconButton" data-toggle="dropdown">
-			    		<span id="attrSelector" ng-if="!addForm.mapDataAttr"></span>
+			    		<span id="attrSelector" ng-if="addForm.mapDataAttr==null"></span>
 							<span id="attrSelector" ng-if="addForm.mapDataAttr">{{addForm.mapDataAttr}}</span>
 							<span class="caret"></span>
 			  		</button>
@@ -134,12 +134,13 @@
 					<div class="btn-group">
 			  		<button type="button" class="btn btn-default dropdown-toggle deconButton" data-toggle="dropdown">
 			    		<span id="attrSelector" ng-if="!addForm.mapVisAttr"></span>
-							<span id="attrSelector" ng-if="addForm.mapVisAttr">{{addForm.mapVisAttr}}</span>
+							<span id="attrSelector" style="color:red;" ng-if="addForm.mapVisAttr && isMapped(addForm.mapVisAttr)">{{addForm.mapVisAttr}}</span>
+							<span id="attrSelector" ng-if="addForm.mapVisAttr && !isMapped(addForm.mapVisAttr)">{{addForm.mapVisAttr}}</span>							
 							<span class="caret"></span>
 			  		</button>
 			  		<ul class="dropdown-menu" role="menu">
 			    		<li class="deconDropDownItem" ng-repeat="visAttr in dataSets[currentDataSet].visSchema" ng-if="isMapped(visAttr)">
-								<a ng-click="addForm.mapVisAttr=visAttr" style="color:grey;">{{visAttr}}</a>
+								<a ng-click="addForm.mapVisAttr=visAttr" style="color:red;">{{visAttr}}</a>
 							</li>
 							<li class="deconDropDownItem" ng-repeat="visAttr in dataSets[currentDataSet].visSchema" ng-if="!isMapped(visAttr)">
 								<a ng-click="addForm.mapVisAttr=visAttr">{{visAttr}}</a>
@@ -150,24 +151,29 @@
 				
 					Mapping Type:
 					<div class="btn-group">
-			  		<button ng-if="addForm.mapDataAttr" type="button" class="btn btn-default dropdown-toggle deconButton" data-toggle="dropdown">
+			  		<button type="button" class="btn btn-default dropdown-toggle deconButton" data-toggle="dropdown">
 			    		<span id="attrSelector" ng-if="!addForm.action"></span>
-							<span id="attrSelector" ng-if="addForm.action">{{addForm.action}}</span>
-							<span class="caret"></span>
-			  		</button>
-			  		<button ng-if="!addForm.mapDataAttr" disabled type="button" class="btn btn-default dropdown-toggle deconButton" data-toggle="dropdown">
-			    		<span id="attrSelector" ng-if="!addForm.action"></span>
-							<span id="attrSelector" ng-if="addForm.action">{{addForm.action}}</span>
+							<span id="attrSelector" ng-if="addForm.action=='Nominal'">Categorical</span>
+							<span id="attrSelector" ng-if="addForm.action=='Linear'">Linear</span>
 							<span class="caret"></span>
 			  		</button>
 			  		<ul class="dropdown-menu" role="menu">
 							<li class="deconDropDownItem">
-								<a ng-click="addFormAction('Nominal')">Nominal</a>
+								<a ng-click="addFormAction('Nominal')">Categorical</a>
 							</li>
 							<li class="deconDropDownItem">
-								<a ng-click="addFormAction('Linear')">Linear</a>
+								<a ng-if="numericTypesInForm()" ng-click="addFormAction('Linear')">Linear</a>
+								<a ng-if="!numericTypesInForm()" style="color:grey;" href="#">Linear</a>
 							</li>
+							<li class="deconDropDownItem">
+								<a ng-click="addFormAction(undefined)">None</a>
+							</li>						
 			  		</ul>
+					</div>
+					
+					<div style="font-size: 8pt; padding: 3px; margin-bottom:5px;margin-top:5px;" class="alert alert-danger" ng-if="addForm.mapVisAttr && isMapped(addForm.mapVisAttr)">
+						Warning: {{addForm.mapVisAttr}} already has a mapping from {{isMapped(addForm.mapVisAttr)}}.  
+						Changing the values for this attribute will remove its existing mapping.
 					</div>
 				
 					<span ng-if="addForm.mapDataAttr == null && addForm.mapVisAttr">
@@ -184,11 +190,8 @@
 						</table>
 					</span>
 
-					<span ng-if="addForm.action == 'Linear' && addForm.mapDataAttr && addForm.mapVisAttr">
-						<p style="color:red;" ng-if="addForm.mapVisAttr && isMapped(addForm.mapVisAttr)">
-							Warning: {{addForm.mapVisAttr}} already has a mapping from {{isMapped(addForm.mapVisAttr)}}.  
-							Changing the values for this attribute will remove its existing mapping.
-						</p>
+					<span ng-if="addForm.action == 'Linear' && addForm.mapDataAttr != null && addForm.mapVisAttr">
+						<br />
 						<table class="table">
 							<tr>
 								<th></th>
@@ -223,11 +226,7 @@
 							</tr>
 						</table>
 					</span>
-					<span ng-if="addForm.action == 'Nominal' && addForm.mapDataAttr && addForm.mapVisAttr">
-						<p style="color:red;" ng-if="addForm.mapVisAttr && isMapped(addForm.mapVisAttr)">
-							Warning: {{addForm.mapVisAttr}} already has a mapping from {{isMapped(addForm.mapVisAttr)}}.  
-							Changing the values for this attribute will remove its existing mapping.
-						</p>
+					<span ng-if="addForm.action == 'Nominal' && addForm.mapDataAttr != null && addForm.mapVisAttr">
 						<table class="changeMapping table">
 							<tr>
 								<th>
@@ -266,7 +265,7 @@
 						</tr>
 					</thead>
 					<tr ng-repeat="i in _.range(0, dataSet.numEls)" ng-click="toggleSelect(dataSet, i)" ng-class="itemClass(dataSet, i)">
-						<td><span svg-inject ind="i" data="dataSet"></td>
+						<td> <span svg-inject ind="i" data="dataSet"></td>
 						<td>{{dataSet.d3Data['deconID'][i]}}</td>
 						<td ng-repeat="(prop, val) in dataSet.d3Data" ng-if="prop != 'deconID'">{{val[i]}}</td>
 					</tr>
