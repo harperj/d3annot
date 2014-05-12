@@ -46,7 +46,7 @@
 
             var attrNames = _.keys(schema.nodes[0].attrs);
 
-            _.each(attrNames, function(attrName, i) {
+            _.each(attrNames, function(attrName) {
                 var attrArray = _.map(schema.nodes, function(node) {
                     return node.attrs[attrName];
                 });
@@ -62,12 +62,16 @@
         });
     }
 
-    function extractLinearMapping()
+    function extractLinearMapping() {
+
+    }
 
     /**
      * Groups nodes by 'schema', the data type or set of data types contained in their D3-bound data.
-     * @param {Array} nodeInfoList - Array of objects containing information about mark-generating SVG nodes
      * @returns {Array} - Array of schemas, each containing a list of information about mark-generating SVG nodes
+     * @param data
+     * @param ids
+     * @param attrs
      */
     function schematize (data, ids, attrs) {
         var dataSchemas = [];
