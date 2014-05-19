@@ -16,7 +16,16 @@
             else if (req.type == "pageActionClicked") {
                 // User clicked the page action, so we inject the main plugin script
                 deconSetup();
+                document.addEventListener('deconDataEvent', function(event) {
+                    initRestylingInterface(event.detail);
+                });
             }
+        });
+    }
+
+    function initRestylingInterface(visData) {
+        chrome.runtime.sendMessage({type: "initRestyling"}, function() {
+            chrome.runtime.sendMessage({type: "restylingData", data: visData});
         });
     }
 
@@ -37,13 +46,12 @@
         console.log("injecting main code");
         injectJS(chrome.extension.getURL('lib/jquery.js'));
         injectJS(chrome.extension.getURL('lib/underscore.js'));
-        injectJS(chrome.extension.getURL('lib/FileSaver.js'));
-        injectJS(chrome.extension.getURL('injected.js'));
+        injectJS(chrome.extension.getURL('lib/simple_statistics.js'));
+        injectJS(chrome.extension.getURL('js/injected.js'));
     }
 
     function injectD3Check() {
         console.log("injecting d3 checker");
-        injectJS(chrome.extension.getURL('d3check.js'));
+        injectJS(chrome.extension.getURL('js/d3check.js'));
     }
-
 })();

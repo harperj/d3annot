@@ -9,12 +9,12 @@
         {
             "matches": ["file:///*/*", "http://*/*", "https://*/*"],
             "css": ["content.css"],
-            "js": ["lib/underscore.js", "lib/d3.js", "lib/jquery.js", "content.js"]
+            "js": ["lib/underscore.js", "lib/d3.js", "lib/jquery.js", "js/content.js"]
         }
     ],
 
     "background": {
-        "scripts": ["background.js"]
+        "scripts": ["js/background.js"]
     },
 
     "page_action": {
@@ -29,14 +29,15 @@
     ],
 
     "web_accessible_resources": [
+        "js/display.js",
+        "js/injected.js",
+        "js/d3check.js",
+        "lib/simple_statistics.js",
         "lib/underscore.js",
-        "display.js",
         "lib/d3.v3.min.js",
-        "injected.js",
-        "d3check.js",
-        "lib/jquery.dataTables.js",
-        "lib/jquery-ui.js",
         "lib/jquery.js",
         "lib/FileSaver.js"
-    ]
+    ],
+
+    "content_security_policy": "script-src 'self'; object-src 'self'"
 }

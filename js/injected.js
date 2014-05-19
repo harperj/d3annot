@@ -20,50 +20,159 @@
         var attrData = extractVisAttrs(dataNodes.nodes);
         var schematizedData = schematize(dataNodes.data, dataNodes.ids, attrData);
 
-        console.log(schematizedData);
-
         _.each(schematizedData, function(schema, i) {
             schematizedData[i].mappings = extractMappings(schema);
         });
 
+        //console.log(schematizedData);
+
         // Now send a custom event with dataNodes to the content script
         var evt = document.createEvent("CustomEvent");
-        evt.initCustomEvent("deconData", true, true, dataNodes);
+        evt.initCustomEvent("deconDataEvent", true, true, schematizedData);
         document.dispatchEvent(evt);
     }
 
+    /**
+     * Given a schema object, returns a list of mappings between data and attribute values in the schema.
+     * @param schema
+     * @returns {Array}
+     */
     function extractMappings (schema) {
-        if (typeof schema.schema !== "object") {
-            return;
-        }
-
         var schemaMappings = [];
 
-        _.each(schema.schema, function(schemaItem) {
-            var dataArray = _.map(schema.nodes, function(node) {
+        _.each(schema.schema, function (schemaItem) {
+            var dataArray = _.map(schema.nodes, function (node) {
                 return node.data[schemaItem];
             });
 
             var attrNames = _.keys(schema.nodes[0].attrs);
-
-            _.each(attrNames, function(attrName) {
-                var attrArray = _.map(schema.nodes, function(node) {
+            _.each(attrNames, function (attrName) {
+                var attrArray = _.map(schema.nodes, function (node) {
                     return node.attrs[attrName];
                 });
-
-                if (typeof dataArray[0] === "number" && typeof attrArray[0] === "number") {
-                    var linearMapping = extractLinearMapping(dataArray, attrArray);
-                }
-                else if(typeof attrArray[0] === "color") {
-
-                }
+                var pairMapping = extractMapping(schemaItem, attrName, dataArray, attrArray);
+                schemaMappings = schemaMappings.concat(pairMapping);
 
             });
         });
+
+        return schemaMappings;
     }
 
-    function extractLinearMapping() {
+    /**
+     * Given a data field and attribute name and value array, returns an array of
+     * mappings between the field and attribute.
+     * @param dataName
+     * @param attrName
+     * @param dataArray
+     * @param attrArray
+     * @returns {Array}
+     */
+    function extractMapping (dataName, attrName, dataArray, attrArray) {
+        var schemaMappings = [];
 
+        if (typeof dataArray[0] === "number" && typeof attrArray[0] === "number") {
+            var linearMapping = extractLinearMapping(dataArray, attrArray);
+            if (linearMapping) {
+                linearMapping = {
+                    type: "linear",
+                    data: dataName,
+                    attr: attrName
+                };
+                schemaMappings.push(linearMapping);
+            }
+        }
+
+        if(typeof attrArray[0] === "object") {
+            /** @TODO Handle linear mappings on colors correctly. */
+            /** @TODO Detect colors rather than all objects. */
+            var colorStringArray = _.map(attrArray, function(color) {return "rgb(" + color.r +
+                "," + color.g + "," + color.b + ")"});
+            var nominalMapping = extractNominalMapping(dataArray, colorStringArray);
+            if (nominalMapping) {
+                nominalMapping.data = dataName;
+                nominalMapping.attr = attrName;
+                schemaMappings.push(nominalMapping);
+                //console.log(nominalMapping);
+            }
+        }
+        else {
+            var nominalMapping = extractNominalMapping(dataArray, attrArray);
+            if (nominalMapping) {
+                nominalMapping.data = dataName;
+                nominalMapping.attr = attrName;
+                schemaMappings.push(nominalMapping);
+                //console.log(nominalMapping);
+            }
+        }
+
+        return schemaMappings;
+    }
+
+    /**
+     * Given a data array and attribute array, finds a nominal mapping between them if it exists.
+     * @param dataArray
+     * @param attrArray
+     * @returns {*}
+     */
+    function extractNominalMapping(dataArray, attrArray) {
+
+        var mapping = {};
+        _.each(dataArray, function(dataVal, i) {
+            if (mapping.hasOwnProperty(dataVal)) {
+                mapping[dataVal].push(attrArray[i]);
+            }
+            else {
+                mapping[dataVal] = [attrArray[i]];
+            }
+        });
+
+        for (var dataVal in mapping) {
+            mapping[dataVal] = _.uniq(mapping[dataVal]);
+            if (mapping[dataVal].length > 1) {
+                return false;
+            }
+        }
+
+        var mappedVals = _.flatten(_.values(mapping));
+
+        // If multiple attr values are in the range, no one-to-one
+        if (_.uniq(mappedVals).length <  mappedVals.length) {
+            return false;
+        }
+
+        // If it is a trivial mapping, don't save it
+        if (_.keys(mapping).length === 1) {
+            return false;
+        }
+
+        var mappingData = {
+            type: "nominal",
+            params: mapping
+        }
+
+        return mappingData;
+    }
+
+    /**
+     * Given a data array and attribute array, finds a linear mapping between them if it exists.
+     * @param dataArray
+     * @param attrArray
+     * @returns {boolean}
+     */
+    function extractLinearMapping(dataArray, attrArray) {
+        var zippedData = _.zip(dataArray, attrArray);
+        if (ss.standard_deviation(dataArray) === 0 || ss.standard_deviation(attrArray) === 0) {
+            return false;
+        }
+
+        var linearRegression = ss.linear_regression().data(zippedData);
+        var linearRegressionLine = linearRegression.line();
+        var rSquared = ss.r_squared(zippedData, linearRegressionLine);
+        if (rSquared > 0.98 && !isNaN(rSquared)) {
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -82,16 +191,7 @@
                 attrs: attrs[i]
             };
 
-            var currSchema;
-            if (typeof data[i] === "object") {
-                currSchema = _.keys(data[i]);
-            }
-            else if (typeof data[i] === "number") {
-                currSchema = "number";
-            }
-            else {
-                currSchema = "string";
-            }
+            var currSchema = _.keys(data[i]);
 
             var foundSchema = false;
             for (var j = 0; j < dataSchemas.length; ++j) {
@@ -122,6 +222,12 @@
         return dataSchemas;
     }
 
+    /**
+     * Given a root SVG element, returns all of the mark generating SVG nodes bound to data,
+     * the data they are bound to, and their order in the DOM traversal ('id').
+     * @param svgNode
+     * @returns {{data: Array, nodes: Array, ids: Array}}
+     */
     function extractData(svgNode) {
         var svgChildren = $(svgNode).find('*');
         var data = [];
@@ -135,8 +241,14 @@
             var node = svgChildren[i];
             if (node.__data__ && _.contains(markGeneratingTags, node.tagName.toLowerCase())) {
                 var nodeData = node.__data__;
-                nodeData.deconID = i;
 
+                if (typeof nodeData === "number") {
+                    nodeData = {number: nodeData};
+                }
+                else if (typeof nodeData !== "object") {
+                    nodeData = {string: nodeData};
+                }
+                nodeData.deconID = i;
                 data.push(nodeData);
                 nodes.push(node);
                 ids.push(i);
@@ -147,6 +259,12 @@
         return {data: data, nodes: nodes, ids: ids};
     }
 
+    /**
+     * Extracts the style and positional properties for each of a list of nodes, placing each node's in
+     * attributes in a Javascript object.
+     * @param nodes
+     * @returns {Array}
+     */
     function extractVisAttrs (nodes) {
         var visAttrData = [];
 
@@ -158,6 +276,7 @@
             var boundingBox = transformedBoundingBox(node);
             style.xPosition = boundingBox.x + (boundingBox.width / 2);
             style.yPosition = boundingBox.y + (boundingBox.height / 2);
+            style.area = boundingBox.width * boundingBox.height;
             style.width = boundingBox.width;
             style.height = boundingBox.height;
 
@@ -240,6 +359,11 @@
         return objArray;
     }
 
+    /**
+     * Finds the CSS style properties for a DOM node.
+     * @param domNode
+     * @returns {{}}
+     */
     function extractStyle (domNode) {
         var style = window.getComputedStyle(domNode, null);
         var styleObject = {};
