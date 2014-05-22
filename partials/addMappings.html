@@ -1,0 +1,139 @@
+<div class="bottomSticky" ng-controller="AddMappingsController">
+    <span>
+        <div>
+            <h3 class="sectionHeader">Add Mapping</h3>
+            <form>
+                Data Field:
+                <div class="btn-group">
+                    <button id="dataSelectorButton" type="button" class="btn btn-default dropdown-toggle deconButton" data-toggle="dropdown">
+                        <span class="attrSelector">{{dataFieldSelected}}</span>
+                        <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu" role="menu">
+                        <li class="deconDropDownItem" ng-repeat="dataField in data[selectedSchema].schema">
+                            <a ng-click="$parent.dataFieldSelected = dataField">{{dataField}}</a>
+                        </li>
+                        <li class="deconDropDownItem">
+                            <a ng-click="$parent.dataFieldSelected = ''">None</a>
+                        </li>
+                    </ul>
+                </div>
+                <br />
+
+                Attribute:
+                <div class="btn-group">
+                    <button type="button" class="btn btn-default dropdown-toggle deconButton" data-toggle="dropdown">
+                        <span class="attrSelector">{{attrSelected}}</span>
+                        <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu" role="menu">
+                        <li class="deconDropDownItem" ng-repeat="(attr, val) in data[selectedSchema].attrs">
+                            <a ng-click="$parent.attrSelected = attr" style="color:grey;">{{attr}}</a>
+                        </li>
+                    </ul>
+                </div>
+                <br />
+
+                Mapping Type:
+                <div class="btn-group">
+                    <button ng-if="dataFieldSelected" type="button" class="btn btn-default dropdown-toggle deconButton" data-toggle="dropdown">
+                        <span class="attrSelector">{{action}}</span>
+                        <span class="caret"></span>
+                    </button>
+                    <button ng-if="!dataFieldSelected" disabled type="button" class="btn btn-default dropdown-toggle deconButton" data-toggle="dropdown">
+                        <span class="attrSelector" ng-if="action"></span>
+                        <span class="attrSelector" ng-if="action">{{action}}</span>
+                        <span class="caret"></span>
+                    </button>
+                    <ul class="dropdown-menu" role="menu">
+                        <li class="deconDropDownItem">
+                            <a ng-click="$parent.action='Nominal'">Nominal</a>
+                        </li>
+                        <li class="deconDropDownItem">
+                            <a ng-click="$parent.action='Linear'">Linear</a>
+                        </li>
+                    </ul>
+                </div>
+
+				<span ng-if="!dataFieldSelected && attrSelected">
+					Select value(s):
+					<table class="table">
+                        <tr>
+                            <th>Orig</th>
+                            <th>New</th>
+                        </tr>
+                        <tr ng-repeat="attrClass in _.uniq(data[selectedSchema].attrs[attrSelected])">
+                            <td>{{attrClass}}</td>
+                            <td><input class="form-control" ng-keypress="submitAttrClassChange($event, attrClass, attrSelected)"></td>
+                        </tr>
+                    </table>
+				</span>
+
+					<span ng-if="action == 'Linear' && dataFieldSelected && attrSelected">
+						<p style="color:red;" ng-if="attrSelected && isMapped(attrSelected)">
+                            Warning: {{attrSelected}} already has a mapping from {{isMapped(attrSelected)}}.
+                            Changing the values for this attribute will remove its existing mapping.
+                        </p>
+						<table class="table">
+                            <tr>
+                                <th></th>
+                                <th>
+                                    {{dataFieldSelected}}
+                                </th>
+                                <th>
+                                    {{attrSelected}}
+                                </th>
+                            </tr>
+                            <tr>
+                                <th>
+									<span class="rowHead"> Min </span>
+                                </th>
+                                <td>
+                                    {{_.min(data[selectedSchema].data[dataFieldSelected])}}
+                                </td>
+                                <td>
+                                    <input class="form-control" ng-keypress="submitNewLinearMapping($event)">
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>
+									<span class="rowHead"> Max </span>
+                                </th>
+                                <td>
+                                    {{_.max(data[selectedSchema].data[dataFieldSelected])}}
+                                </td>
+                                <td>
+                                    <input class="form-control" ng-keypress="submitNewLinearMapping($event)">
+                                </td>
+                            </tr>
+                        </table>
+					</span>
+					<span ng-if="action == 'Nominal' && dataFieldSelected && attrSelected">
+						<p style="color:red;" ng-if="attrSelected && isMapped(attrSelected)">
+                            Warning: {{attrSelected}} already has a mapping from {{isMapped(attrSelected)}}.
+                            Changing the values for this attribute will remove its existing mapping.
+                        </p>
+						<table class="changeMapping table">
+                            <tr>
+                                <th>
+                                    {{dataFieldSelected}}
+                                </th>
+                                <th>
+                                    {{attrSelected}}
+                                </th>
+                            </tr>
+                            <tr ng-repeat="from in _.uniq(data[selectedSchema].data[dataFieldSelected])">
+                                <td>
+                                    {{from}}
+                                </td>
+                                <td>
+                                    <input class="form-control" ng-keypress="formCreateNominalMapping($event, dataFieldSelected)">
+                                </td>
+                            </tr>
+                        </table>
+					</span>
+            </form>
+            </form>
+        </div>
+    </span>
+</div>

@@ -1,6 +1,75 @@
 <div class="mapping-group" ng-controller="MappingsListController">
     <h3 class="sectionHeader">Mappings:</h3>
-    <div class="panel-group" id="mappings" ng-repeat="mapping in chosenSchema.mappings">
-        
+    <div class="panel-group" id="mappings" ng-repeat="mapping in data[selectedSchema].mappings">
+        <div class="panel panel-default">
+            <div class="panel-heading btn-toolbar" style="background-color:#7fc97f;">
+                <a data-toggle="collapse" data-parent="#mappings" href="#{{(mapping.data+mapping.attr).replace(' ','')}}">
+                    {{mapping.data}} &#10141; {{mapping.attr}}
+                    <button style="border: 0px;float: right;background-color:#7fc97f;" type="button" class="btn btn-default btn-xs">
+                        <!-- ng-click="removeMapping(dataAttr, mappedAttr)"  -->
+                        <span class="glyphicon glyphicon-remove"></span>
+                    </button>
+                </a>
+            </div>
+            <div id="{{(mapping.data+mapping.attr).replace(' ','')}}" class="panel-collapse collapse" ng-if="mapping.type === 'nominal'">
+                <table class="changeMapping table">
+                    <tr>
+                        <th>
+                            {{mapping.data}}
+                        </th>
+                        <th>
+                            {{mapping.attr}}
+                        </th>
+                    </tr>
+                    <tr ng-repeat="(from, to) in mapping.params">
+                        <td>
+                            {{from}}
+                        </td>
+                        <td>
+                            <input class="form-control" value="{{to}}">
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <div id="{{(mapping.data+mapping.attr).replace(' ','')}}" class="panel-collapse collapse" ng-if="mapping.type === 'linear'">
+                <table class="changeMapping table">
+                    <tr>
+                        <th></th>
+                        <th>
+                            {{mapping.data}}
+                        </th>
+                        <th>
+                            {{mapping.attr}}
+                        </th>
+                    </tr>
+                    <tr>
+                        <th>
+                            <span class="rowHead"> Min </span>
+                        </th>
+                        <td>
+                            {{mapping.params.dataMin}}
+                        </td>
+                        <td>
+                            <input class="form-control" value="{{mapping.params.attrMin}}">
+                        </td>
+                        <!--						<td>
+                                                     <span svg-inject ind="getIndexForDataVal(dataAttr, mappedAttr[1].dataMin)" data="dataSets[currentDataSet]">
+                                                </td>
+                        -->
+                    </tr>
+                    <tr>
+                        <th class="rowHead">
+                            <span class="rowHead"> Max </span>
+                        </th>
+                        <td>
+                            {{mapping.params.dataMax}}
+                        </td>
+                        <td>
+                            <input class="form-control" value="{{mapping.params.attrMax}}">
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
     </div>
 </div>

@@ -18,11 +18,12 @@
 </head>
 <body ng-controller="RestylingAppController">
 <div id="wrapper">
-    <div id="page-content-wrapper">
-        <ng-include src="'partials/dataTable.html'"></ng-include>
-    </div>
     <div id="sidebar-wrapper">
-        <ng-include src="'partials/mappingsList.html'"></ng-include>
+        <span ng-include src="'partials/mappingsList.html'"></span>
+        <span ng-include src="'partials/addMappings.html'"></span>
+    </div>
+    <div id="page-content-wrapper">
+        <div ng-include src="'partials/dataTable.html'"></div>
     </div>
 </div>
 </body>

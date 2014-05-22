@@ -32,6 +32,7 @@
         "js/display.js",
         "js/injected.js",
         "js/d3check.js",
+        "lib/bootstrap.js",
         "lib/simple_statistics.js",
         "lib/underscore.js",
         "lib/d3.v3.min.js",
@@ -39,5 +40,5 @@
         "lib/FileSaver.js"
     ],
 
-    "content_security_policy": "script-src 'self'; object-src 'self'"
+    "content_security_policy": "script-src 'unsafe-eval' 'self'; object-src 'self'"
 }

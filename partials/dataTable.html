@@ -2,24 +2,24 @@
 
     <div class="page-content-wrapper">
         <div class="page-content">
-            <div class="dataContainer" ng-repeat="schema in data">
-                <!-- <button ng-click="selectDataSet(dataSet)">Select</button> -->
-                {{schema.numNodes}}
+            <div class="dataContainer" ng-repeat="schema in data | orderBy:numNodes:true">
+                <button ng-click="selectSchema(schema)">Select</button>
                 <h3 class="sectionHeader">Data Table {{$index+1}}</h3>
                 <table class="table dataTable">
                     <thead ng-click="">
                     <tr class="headerRow">
-                        <!-- <th>Mark</th> -->
+                        <th>Mark</th>
                         <th>deconID</th>
-                        <th ng-repeat="(dataField, dataItem) in schema.nodes[0].data" ng-if="dataField !== 'deconID'">
+                        {{_.keys(schema.data)}}
+                        <th ng-repeat="(dataField, dataValues) in schema.data" ng-if="dataField !== 'deconID'">
                             {{dataField}}
                         </th>
                     </tr>
                     </thead>
-                    <tr ng-repeat="node in schema.nodes"> <!-- ng-click="toggleSelect(dataSet, i)" ng-class="itemClass(dataSet, i)" -->
-                        <!-- <td><span svg-inject ind="i" data="dataSet"></td> -->
-                        <td>{{node.data['deconID']}}</td>
-                        <td ng-repeat="(prop, val) in node.data" ng-if="prop != 'deconID'">{{val}}</td>
+                    <tr ng-repeat="id in schema.ids"> <!-- ng-click="toggleSelect(dataSet, i)" ng-class="itemClass(dataSet, i)" -->
+                        <td><svg-inject ind="$index" schema="schema" /></td>
+                        <td>{{schema.data['deconID'][$index]}}</td>
+                        <td ng-repeat="(dataField, dataValues) in schema.data" ng-if="dataField != 'deconID'">{{dataValues[schema.ids.indexOf(id)]}}</td>
                     </tr>
                 </table>
             </div>

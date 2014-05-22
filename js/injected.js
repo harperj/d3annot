@@ -18,18 +18,42 @@
     function visDeconstruct(svgNode) {
         var dataNodes = extractData(svgNode);
         var attrData = extractVisAttrs(dataNodes.nodes);
-        var schematizedData = schematize(dataNodes.data, dataNodes.ids, attrData);
-
+        var nodeAttrData = extractNodeAttrs(dataNodes.nodes);
+        var schematizedData = schematize(dataNodes.data, dataNodes.ids, attrData, nodeAttrData);
+        console.log(schematizedData);
         _.each(schematizedData, function(schema, i) {
             schematizedData[i].mappings = extractMappings(schema);
         });
 
-        //console.log(schematizedData);
+        console.log(schematizedData);
 
         // Now send a custom event with dataNodes to the content script
         var evt = document.createEvent("CustomEvent");
         evt.initCustomEvent("deconDataEvent", true, true, schematizedData);
         document.dispatchEvent(evt);
+    }
+
+    function extractNodeAttrs(nodes) {
+        var nodeAttrs = [];
+        _.each(nodes, function(node) {
+            var attrData = {};
+
+            if (node.tagName === "path") {
+                attrData.d = d3.select(node).attr("d");
+            }
+            else if (node.tagName === "line") {
+                attrData.x1 = d3.select(node).attr("x1");
+                attrData.y1 = d3.select(node).attr("y1");
+                attrData.x2 = d3.select(node).attr("x2");
+                attrData.y2 = d3.select(node).attr("y2");
+            }
+            else if (node.tagName === "text") {
+                attrData.text = $(node).text();
+            }
+
+            nodeAttrs.push(attrData);
+        });
+        return nodeAttrs;
     }
 
     /**
@@ -39,17 +63,12 @@
      */
     function extractMappings (schema) {
         var schemaMappings = [];
-
         _.each(schema.schema, function (schemaItem) {
-            var dataArray = _.map(schema.nodes, function (node) {
-                return node.data[schemaItem];
-            });
+            var dataArray = schema.data[schemaItem];
 
-            var attrNames = _.keys(schema.nodes[0].attrs);
+            var attrNames = _.keys(schema.attrs);
             _.each(attrNames, function (attrName) {
-                var attrArray = _.map(schema.nodes, function (node) {
-                    return node.attrs[attrName];
-                });
+                var attrArray = schema.attrs[attrName];
                 var pairMapping = extractMapping(schemaItem, attrName, dataArray, attrArray);
                 schemaMappings = schemaMappings.concat(pairMapping);
 
@@ -74,11 +93,8 @@
         if (typeof dataArray[0] === "number" && typeof attrArray[0] === "number") {
             var linearMapping = extractLinearMapping(dataArray, attrArray);
             if (linearMapping) {
-                linearMapping = {
-                    type: "linear",
-                    data: dataName,
-                    attr: attrName
-                };
+                linearMapping.data = dataName;
+                linearMapping.attr = attrName;
                 schemaMappings.push(linearMapping);
             }
         }
@@ -90,6 +106,7 @@
                 "," + color.g + "," + color.b + ")"});
             var nominalMapping = extractNominalMapping(dataArray, colorStringArray);
             if (nominalMapping) {
+                nominalMapping.type = 'nominal';
                 nominalMapping.data = dataName;
                 nominalMapping.attr = attrName;
                 schemaMappings.push(nominalMapping);
@@ -99,6 +116,7 @@
         else {
             var nominalMapping = extractNominalMapping(dataArray, attrArray);
             if (nominalMapping) {
+                nominalMapping.type = 'nominal';
                 nominalMapping.data = dataName;
                 nominalMapping.attr = attrName;
                 schemaMappings.push(nominalMapping);
@@ -146,6 +164,10 @@
             return false;
         }
 
+        _.each(_.keys(mapping), function(key) {
+            mapping[key] = mapping[key][0];
+        });
+
         var mappingData = {
             type: "nominal",
             params: mapping
@@ -158,7 +180,7 @@
      * Given a data array and attribute array, finds a linear mapping between them if it exists.
      * @param dataArray
      * @param attrArray
-     * @returns {boolean}
+     * @returns {}
      */
     function extractLinearMapping(dataArray, attrArray) {
         var zippedData = _.zip(dataArray, attrArray);
@@ -170,7 +192,19 @@
         var linearRegressionLine = linearRegression.line();
         var rSquared = ss.r_squared(zippedData, linearRegressionLine);
         if (rSquared > 0.98 && !isNaN(rSquared)) {
-            return true;
+            var mapping = {
+                type: 'linear'
+            };
+            var dataMin = _.min(dataArray);
+            var dataMax = _.max(dataArray);
+            var params = {
+                dataMin: dataMin,
+                attrMin: linearRegressionLine(dataMin),
+                dataMax: dataMax,
+                attrMax: linearRegressionLine(dataMax)
+            }
+            mapping.params = params;
+            return mapping;
         }
         return false;
     }
@@ -182,39 +216,43 @@
      * @param ids
      * @param attrs
      */
-    function schematize (data, ids, attrs) {
+    function schematize (data, ids, attrs, nodeAttrs) {
         var dataSchemas = [];
         for (var i = 0; i < data.length; ++i) {
-            var nodeObj = {
-                data: data[i],
-                id: ids[i],
-                attrs: attrs[i]
-            };
-
             var currSchema = _.keys(data[i]);
 
             var foundSchema = false;
             for (var j = 0; j < dataSchemas.length; ++j) {
-                if (dataSchemas[j].schema === currSchema) {
+                if (_.intersection(currSchema, dataSchemas[j].schema).length == currSchema.length) {
                     foundSchema = true;
-                    dataSchemas[j].nodes.push(nodeObj);
+                    dataSchemas[j].ids.push(ids[i]);
+                    dataSchemas[j].nodeAttrs.push(nodeAttrs[i]);
+
+                    _.each(data[i], function(val, attr) {
+                        dataSchemas[j].data[attr].push(val);
+                    });
+                    _.each(attrs[i], function(val, attr) {
+                        dataSchemas[j].attrs[attr].push(val);
+                    });
                     break;
-                }
-                else if (typeof currSchema === "object") {
-                    // If their intersection is the same length, they have the same elements
-                    if (_.intersection(currSchema, dataSchemas[j].schema).length == currSchema.length) {
-                        foundSchema = true;
-                        dataSchemas[j].nodes.push(nodeObj);
-                        break;
-                    }
                 }
             }
 
             if (!foundSchema) {
                 var newSchema = {
                     schema: currSchema,
-                    nodes: [nodeObj]
+                    ids: [ids[i]],
+                    data: {},
+                    attrs: {},
+                    nodeAttrs: [nodeAttrs[i]]
                 };
+                _.each(data[i], function(val, attr) {
+                    newSchema.data[attr] = [val];
+                });
+                _.each(attrs[i], function(val, attr) {
+                    newSchema.attrs[attr] = [val];
+                });
+
                 dataSchemas.push(newSchema);
             }
         }
@@ -235,7 +273,7 @@
         var ids = [];
 
         /** List of tag names which generate marks in SVG and are accepted by our system. **/
-        var markGeneratingTags = ["circle", "ellipse", "rect", "path", "polygon", "text"];
+        var markGeneratingTags = ["circle", "ellipse", "rect", "path", "polygon", "text", "line"];
 
         for (var i = 0; i < svgChildren.length; ++i) {
             var node = svgChildren[i];
