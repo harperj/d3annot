@@ -17,7 +17,7 @@
                     </tr>
                     </thead>
                     <tr ng-repeat="id in schema.ids"> <!-- ng-click="toggleSelect(dataSet, i)" ng-class="itemClass(dataSet, i)" -->
-                        <td><svg-inject ind="$index" schema="schema" /></td>
+                        <td><svg-inject ind="$index" schema="schema"></svg-inject></td>
                         <td>{{schema.data['deconID'][$index]}}</td>
                         <td ng-repeat="(dataField, dataValues) in schema.data" ng-if="dataField != 'deconID'">{{dataValues[schema.ids.indexOf(id)]}}</td>
                     </tr>

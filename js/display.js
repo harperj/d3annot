@@ -4,15 +4,29 @@
     var restylingApp = angular.module('restylingApp', []);
 
     restylingApp.factory('chromeMessageService', function() {
-        return function (callback) {
-            chrome.runtime.onMessage.addListener(function (message) {
+        var port;
+
+        function addDataListener(callback) {
+            chrome.runtime.onMessage.addListener(function (message, sender) {
                 if (message.type === "restylingData") {
                     var data = message.data;
                     data = $.extend([], data);
                     callback(data);
+                    port = chrome.tabs.connect(sender.tab.id, {name: 'd3decon'});
                 }
             });
-        };
+        }
+
+        function sendMessage(message) {
+            port.postMessage(message);
+        }
+
+        return {
+            receiveData: function (callback) {
+                addDataListener(callback);
+            },
+            sendMessage: sendMessage
+        }
     });
 
     restylingApp.controller('RestylingAppController', ['$scope', 'chromeMessageService',
@@ -21,19 +35,24 @@
             $scope.data = [];
 
             // Load data from the visualization as it arrives
-            chromeMessageService(function (data) {
+            function setupMessageServiceData (data) {
                 _.each(data, function(schema, i) {
                     data[i].numNodes = schema.ids.length;
                 });
                 $scope.data = data;
                 $scope.$apply();
-            });
+            }
+            chromeMessageService.receiveData(setupMessageServiceData);
 
             $scope.selectSchema = function(schema) {
                 console.log($scope.data);
                 $scope.selectedSchema = $scope.data.indexOf(schema);
                 console.log($scope.selectedSchema);
             };
+
+            $scope.doUpdate = function(message) {
+                chromeMessageService.sendMessage(message);
+            }
 
         }]);
 
@@ -42,12 +61,145 @@
     }]);
 
     restylingApp.controller('MappingsListController', ['$scope', function($scope) {
+        $scope.nominalMappingChange = function($event, mapping, from) {
+            if ($event.keyCode === 13) {
+                var newVal = angular.element($event.target).val();
 
+                console.log(mapping.params);
+                console.log(from);
+                var oldVal = mapping.params[from];
+                var changeInds = [];
+                var mappingSchemaInd = -1;
+
+                // update mapping with new value and find schema ind
+                    _.each($scope.data, function (schema, schemaInd) {
+                        var mappingInd = schema.mappings.indexOf(mapping);
+                        if (mappingInd !== -1) {
+                            console.log("Found mapping.");
+                            schema.mappings[mappingInd].params[from] = newVal;
+                            mappingSchemaInd = schemaInd;
+                        }
+                    });
+
+
+                // update data with new attr vals and collect indices
+                console.log(oldVal);
+                _.each($scope.data[mappingSchemaInd].attrs[mapping.attr], function (val, valInd) {
+                    if (val === oldVal) {
+                        $scope.data[mappingSchemaInd].attrs[mapping.attr][valInd] = newVal;
+                        changeInds.push(valInd);
+                    }
+                });
+
+                var ids = _.map(changeInds, function (ind) {
+                    return $scope.data[mappingSchemaInd].ids[ind]
+                })
+                var message = {
+                    type: "update",
+                    attr: mapping.attr,
+                    val: newVal,
+                    ids: ids
+                };
+                $scope.doUpdate(message);
+            }
+        };
+
+        $scope.linearMappingChange = function($event, mapping, isMin) {
+            if ($event.keyCode !== 13) {
+                return;
+            }
+
+            var newVal = +angular.element($event.target).val();
+            var mappingSchemaInd = -1;
+
+            _.each($scope.data, function(schema, schemaInd) {
+                var mappingInd = schema.mappings.indexOf(mapping);
+                if (mappingInd !== -1) {
+                    if (isMin) {
+                        mapping.params.attrMin = newVal;
+                    }
+                    else {
+                        mapping.params.attrMax = newVal;
+                    }
+
+                    mappingSchemaInd = schemaInd;
+                }
+            });
+            var regressionData;
+            console.log(mapping);
+            if (isMin) {
+                regressionData = [[mapping.params.dataMin, newVal], [mapping.params.dataMax, mapping.params.attrMax]];
+            }
+            else {
+                regressionData = [[mapping.params.dataMin, mapping.params.attrMin], [mapping.params.dataMax, newVal]];
+            }
+
+            console.log(regressionData);
+
+            var regression = ss.linear_regression().data(regressionData);
+            var regressionLine = regression.line();
+            console.log(regression.m());
+            console.log(regression.b());
+            var attrArray = $scope.data[mappingSchemaInd].attrs[mapping.attr];
+            var dataArray = $scope.data[mappingSchemaInd].data[mapping.data];
+            _.each(attrArray, function(attrVal, ind) {
+                attrArray[ind] = regressionLine(dataArray[ind]);
+                var message = {
+                    type: "update",
+                    attr: mapping.attr,
+                    val: regressionLine(dataArray[ind]),
+                    ids: [$scope.data[mappingSchemaInd].ids[ind]]
+                };
+                $scope.doUpdate(message);
+            });
+
+        };
     }]);
 
     restylingApp.controller('AddMappingsController', ['$scope', function($scope) {
         $scope.dataFieldSelected = "";
         $scope.attrSelected = "";
+
+        $scope.isMapped = function(attr) {
+            var schema = $scope.data[$scope.selectedSchema];
+            var foundMapping = _.find(schema.mappings, function(mapping) {
+                return mapping.attr == attr;
+            });
+            return foundMapping;
+        };
+
+        $scope.uniqVals = function(schemaInd, fieldName, isAttr) {
+            var allVals;
+            if (isAttr) {
+                allVals = $scope.data[schemaInd].attrs[fieldName];
+            }
+            else {
+                allVals = $scope.data[schemaInd].data[fieldName];
+            }
+            return _.uniq(allVals);
+        };
+
+        $scope.attrChange = function($event, oldAttrVal, attr) {
+            if ($event.keyCode === 13) { //enter key
+                var schema = $scope.data[$scope.selectedSchema];
+                var newAttrVal = angular.element($event.target).val();
+                var inds = [];
+                for (var i = 0; i < schema.attrs[attr].length; ++i) {
+                    if (schema.attrs[attr][i] === oldAttrVal) {
+                        inds.push(i);
+                    }
+                }
+                var ids = _.map(inds, function(ind) {return schema.ids[ind];});
+                var message = {
+                    type: "update",
+                    attr: attr,
+                    val: newAttrVal,
+                    ids: ids
+                };
+                $scope.doUpdate(message);
+            }
+        };
+
     }]);
 
     restylingApp.directive('svgInject', function($compile) {
@@ -59,7 +211,6 @@
             restrict: 'E',
             link: function(scope, element, attrs, controller) {
                 scope.$watch("", function(newValue, oldValue) {
-
                     var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
                     var canvasWidth = 20;
                     svg.setAttribute("width", canvasWidth.toString());

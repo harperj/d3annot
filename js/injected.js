@@ -1,5 +1,6 @@
 "use strict";
 (function () {
+    var deconstructor;
 
     /** Binds right click to initiate deconstruction on the root SVG node. **/
     $(document).bind("contextmenu", function (event) {
@@ -8,6 +9,11 @@
             event.preventDefault();
             return visDeconstruct(ancestorSVG);
         }
+    });
+
+    document.addEventListener("updateEvent", function(event) {
+        var updateMessage = event.detail;
+        deconstructor.updateNodes(updateMessage.ids, updateMessage.attr, updateMessage.val);
     });
 
     /**
@@ -25,7 +31,11 @@
             schematizedData[i].mappings = extractMappings(schema);
         });
 
+        deconstructor = new VisDeconstructor(svgNode, dataNodes.nodes, dataNodes.ids, schematizedData);
+
         console.log(schematizedData);
+
+
 
         // Now send a custom event with dataNodes to the content script
         var evt = document.createEvent("CustomEvent");
@@ -37,20 +47,11 @@
         var nodeAttrs = [];
         _.each(nodes, function(node) {
             var attrData = {};
-
-            if (node.tagName === "path") {
-                attrData.d = d3.select(node).attr("d");
+            for (var i = 0; i < node.attributes.length; ++i) {
+                var attr = node.attributes[i];
+                attrData[attr.name] = attr.value;
             }
-            else if (node.tagName === "line") {
-                attrData.x1 = d3.select(node).attr("x1");
-                attrData.y1 = d3.select(node).attr("y1");
-                attrData.x2 = d3.select(node).attr("x2");
-                attrData.y2 = d3.select(node).attr("y2");
-            }
-            else if (node.tagName === "text") {
-                attrData.text = $(node).text();
-            }
-
+            attrData.text = $(node).text();
             nodeAttrs.push(attrData);
         });
         return nodeAttrs;
@@ -74,6 +75,23 @@
 
             });
         });
+
+        var attrsWithLinearMapping = [];
+        _.each(schemaMappings, function(schemaMapping) {
+            if (schemaMapping.type === "linear") {
+                attrsWithLinearMapping.push(schemaMapping.attr);
+            }
+        });
+        var removed = 0;
+        var numMappings = schemaMappings.length;
+        for(var ind = 0; ind < numMappings; ++ind) {
+            var schemaMapping = schemaMappings[ind-removed];
+            var hasLinear = attrsWithLinearMapping.indexOf(schemaMapping.attr) !== -1;
+            if(schemaMapping.type === 'nominal' && hasLinear) {
+                schemaMappings.splice(ind-removed, 1);
+                removed++;
+            }
+        }
 
         return schemaMappings;
     }
@@ -412,8 +430,8 @@
 
         for (var i = 0; i < style.length; ++i) {
             var prop = style[i];
-            var camelCaseProp = prop.replace(/\-([a-z])/g, camelize);
-            styleObject[camelCaseProp] = style.getPropertyValue(prop);
+            //var camelCaseProp = prop.replace(/\-([a-z])/g, camelize);
+            styleObject[prop] = style.getPropertyValue(prop);
         }
 
         return styleObject;

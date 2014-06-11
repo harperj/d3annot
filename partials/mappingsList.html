@@ -5,7 +5,7 @@
             <div class="panel-heading btn-toolbar" style="background-color:#7fc97f;">
                 <a data-toggle="collapse" data-parent="#mappings" href="#{{(mapping.data+mapping.attr).replace(' ','')}}">
                     {{mapping.data}} &#10141; {{mapping.attr}}
-                    <button style="border: 0px;float: right;background-color:#7fc97f;" type="button" class="btn btn-default btn-xs">
+                    <button style="border: 0;float: right;background-color:#7fc97f;" type="button" class="btn btn-default btn-xs">
                         <!-- ng-click="removeMapping(dataAttr, mappedAttr)"  -->
                         <span class="glyphicon glyphicon-remove"></span>
                     </button>
@@ -26,7 +26,7 @@
                             {{from}}
                         </td>
                         <td>
-                            <input class="form-control" value="{{to}}">
+                            <input class="form-control" value="{{to}}" ng-keypress="nominalMappingChange($event, mapping, from)">
                         </td>
                     </tr>
                 </table>
@@ -50,12 +50,14 @@
                             {{mapping.params.dataMin}}
                         </td>
                         <td>
-                            <input class="form-control" value="{{mapping.params.attrMin}}">
+                            <input class="form-control" value="{{mapping.params.attrMin}}" ng-keypress="linearMappingChange($event, mapping, true)">
                         </td>
-                        <!--						<td>
-                                                     <span svg-inject ind="getIndexForDataVal(dataAttr, mappedAttr[1].dataMin)" data="dataSets[currentDataSet]">
-                                                </td>
-                        -->
+<!--
+                        <td>
+                            <svg-inject ind="data[selectedSchema].data[mapping.data].indexOf(mapping.params.dataMin)"
+                                        schema="data[selectedSchema]"></svg-inject>
+                        </td>
+-->
                     </tr>
                     <tr>
                         <th class="rowHead">
@@ -65,7 +67,7 @@
                             {{mapping.params.dataMax}}
                         </td>
                         <td>
-                            <input class="form-control" value="{{mapping.params.attrMax}}">
+                            <input class="form-control" value="{{mapping.params.attrMax}}" ng-keypress="linearMappingChange($event, mapping, false)">
                         </td>
                     </tr>
                 </table>

@@ -1,6 +1,7 @@
 "use strict";
 
 (function () {
+    var restylingPort;
 
     if (window === top) {
         chrome.extension.onRequest.addListener(function(req, sender, sendResponse) {
@@ -27,6 +28,25 @@
         chrome.runtime.sendMessage({type: "initRestyling"}, function() {
             chrome.runtime.sendMessage({type: "restylingData", data: visData});
         });
+        chrome.runtime.onConnect.addListener(function(port) {
+            if (port.name !== "d3decon") {
+                console.error("ERROR: Wrong port name.");
+            }
+            restylingPort = port;
+            restylingPort.onMessage.addListener(restylingPortHandler)
+        });
+    }
+
+    function restylingPortHandler(message) {
+        console.log(message);
+        if (message.type === "update") {
+            var evt = document.createEvent("CustomEvent");
+            evt.initCustomEvent("updateEvent", true, true, message);
+            document.dispatchEvent(evt);
+        }
+        else {
+            console.error("Unknown message received.");
+        }
     }
 
     function injectJS(url) {
@@ -47,6 +67,7 @@
         injectJS(chrome.extension.getURL('lib/jquery.js'));
         injectJS(chrome.extension.getURL('lib/underscore.js'));
         injectJS(chrome.extension.getURL('lib/simple_statistics.js'));
+        injectJS(chrome.extension.getURL('js/VisInfo.js'));
         injectJS(chrome.extension.getURL('js/injected.js'));
     }
 
