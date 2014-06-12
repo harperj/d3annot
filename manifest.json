@@ -100,7 +100,7 @@
 "http://bl.ocks.org/christophermanning/raw/1625629/"
 ],
 			"css": ["content.css"],
-			"js": ["lib/raphael-min.js", "lib/d3.v3.min.js", "lib/jquery.js", "main_content.js", "lib/FileSaver.js"]
+			"js": ["lib/d3.v3.min.js", "lib/jquery.js", "main_content.js"]
 		}
 	],
 	

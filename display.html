@@ -7,9 +7,7 @@
 	<link rel="stylesheet" type="text/css" href="display.css" />
 	<link rel="stylesheet" type="text/css" href="lib/bootstrap/css/bootstrap.min.css" />
 	<link rel="stylesheet" type="text/css" href="lib/ng-table.css" />
-	<script src="lib/raphael-min.js"></script>
 	<script src="lib/angular.min.js"></script>
-	<script src="lib/ui-utils.js"></script>
 	<script src="lib/simple_statistics.js"></script>
 	<script src="lib/ng-table.js"></script>
 	<script src="lib/d3.v3.min.js"></script>
@@ -17,7 +15,6 @@
 	<script src="lib/jquery.js"></script>
 	<script src="lib/bootstrap/js/bootstrap.min.js"></script>
 	<script src="lib/jquery.dataTables.js"></script>
-	<script src="lib/dataTables.apiPlugins.js"></script>
 	<script src="lib/jstat.js"></script>
 	<script src="display.js"></script>
 </head>
@@ -265,7 +262,7 @@
 						</tr>
 					</thead>
 					<tr ng-repeat="i in _.range(0, dataSet.numEls)" ng-click="toggleSelect(dataSet, i)" ng-class="itemClass(dataSet, i)">
-						<td> <span svg-inject ind="i" data="dataSet"></td>
+						<!-- ><td><span svg-inject ind="i" data="dataSet"></td> -->
 						<td>{{dataSet.d3Data['deconID'][i]}}</td>
 						<td ng-repeat="(prop, val) in dataSet.d3Data" ng-if="prop != 'deconID'">{{val[i]}}</td>
 					</tr>

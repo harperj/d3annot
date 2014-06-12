@@ -86,9 +86,8 @@ $(document).ready ->
 
 
 injectJS(chrome.extension.getURL('lib/jquery.js'))
-injectJS(chrome.extension.getURL('lib/FileSaver.js'))
-injectJS(chrome.extension.getURL('lib/raphael-min.js'))
 injectCSS('http://fonts.googleapis.com/css?family=Tauri')
+
 # wait to inject final script so that dependencies will be picked up first
 waitToInject()
 injectJS(chrome.extension.getURL('lib/d3.v3.min.js'))
