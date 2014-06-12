@@ -70,7 +70,5 @@ $(document).ready ->
 	remapper = new VisRemapper()	
 
 injectJS(chrome.extension.getURL('lib/jquery.js'))
-injectJS(chrome.extension.getURL('lib/FileSaver.js'))
-injectJS(chrome.extension.getURL('lib/raphael-min.js'))
 # wait to inject final script so that dependencies will be picked up first
 waitToInject()

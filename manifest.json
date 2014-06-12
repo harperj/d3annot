@@ -7,7 +7,7 @@
 
 	"content_scripts": [
 		{
-			"matches": ["http://almossawi.com/firefox/prose/",
+			"matches": ["http://bl.ocks.org/jasondavies/raw/1341281/",
 "http://www.nytimes.com/interactive/2013/05/25/sunday-review/corporate-taxes.html",
 "http://roadtolarissa.com/meteors/",
 "http://people.ischool.berkeley.edu/~derekkuo/iolab_facebook/",
@@ -51,7 +51,7 @@
 "file:///Users/harper/Documents/Work/d3deconstruct/d3annot/lib/inthemoney.html",
 "http://bl.ocks.org/leondutoit/raw/6436923/"],
 			"css": ["content.css"],
-			"js": ["lib/raphael-min.js", "lib/d3.v3.min.js", "lib/jquery.js", "main_content.js", "lib/FileSaver.js"]
+			"js": ["lib/d3.v3.min.js", "lib/jquery.js", "main_content.js"]
 		}
 	],
 	
@@ -64,5 +64,5 @@
 		"activeTab",
     "https://secure.flickr.com/"
   ],
-  "web_accessible_resources": ["lib/raphael-min.js", "display.js", "lib/d3.v3.min.js", "injected.js", "lib/jquery.min.map", "lib/jquery.dataTables.js", "lib/jquery-ui.js", "lib/jquery.js", "lib/FileSaver.js"]
+  "web_accessible_resources": ["display.js", "lib/d3.v3.min.js", "injected.js", "lib/jquery.min.map", "lib/jquery.js"]
 }

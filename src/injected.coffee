@@ -63,8 +63,7 @@ class VisUpdater
 		elem_map = []
 		selection.each (d, i) ->
 			item = {}
-			console.log this.tagName.toLowerCase()
-			if this.tagName.toLowerCase() in ['g', 'svg', 'defs', 'clippath', 'path']
+			if this.tagName.toLowerCase() in ['g', 'svg', 'defs', 'clippath']
 				return true
 			if this.parentElement.tagName.toLowerCase() is 'clippath'
 				return true
@@ -96,7 +95,6 @@ class VisUpdater
 	exportDataToVis: (data) ->
 		evt = document.createEvent "CustomEvent"
 		evt.initCustomEvent("dataExportEvent", true, true, data)
-		console.log evt
 		document.dispatchEvent(evt)
 		
 	getUpdatedClone: (id, attr, val) ->
@@ -120,8 +118,6 @@ class VisUpdater
 			
 		parentNode.appendChild(clone)
 		bbox = transformedBoundingBox(clone, svg)
-		console.log bbox
-		console.log clone
 		
 		for currAttr in @elem_map[id]["current"].attributes
 			if not (currAttr.name in ["width", "height", "id", "cx", "cy", "x", 
@@ -167,13 +163,11 @@ class VisUpdater
 			
 		if clone.tagName.toLowerCase() in ["circle", "polygon"] and
 		not (currentTag in ["circle", "polygon"])
-			console.log "applying offset"
 			centerOffsetX = currentWidth / 2
 			centerOffsetY = currentHeight / 2
 			translate.setTranslate(parentTrans.e-trans.e+parentOffset[0]+centerOffsetX, parentTrans.f-trans.f+parentOffset[1]+centerOffsetY)
 		else if not (clone.tagName.toLowerCase() in ["circle", "polygon"]) and
 		currentTag in ["circle", "polygon"]
-			console.log "applying offset"
 			centerOffsetX = currentWidth / 2
 			centerOffsetY = currentHeight / 2
 			translate.setTranslate(parentTrans.e-trans.e+parentOffset[0]-centerOffsetX, parentTrans.f-trans.f+parentOffset[1]-centerOffsetY)
@@ -209,7 +203,6 @@ class VisUpdater
 
 		if attr is "width"
 			newWidth = parseFloat(val)
-			console.log cloneWidth
 			scale.setScale((newWidth / cloneWidth), (currentHeight / cloneHeight))
 			offCenterTranslate = svg.createSVGTransform()
 			unless currentTag in ["circle", "polygon"]
