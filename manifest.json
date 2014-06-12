@@ -7,7 +7,7 @@
 
 	"content_scripts": [
 		{
-			"matches": [
+			"matches": ["http://bl.ocks.org/jasondavies/raw/1341281/",
 				"http://vallandingham.me/vis/nationality_by_city.html",
 				"http://bl.ocks.org/mbostock/raw/5925375/",
 				"http://bl.ocks.org/mbostock/raw/3306362/",

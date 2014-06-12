@@ -723,7 +723,11 @@ restylingApp.controller 'MappingListCtrl', ($scope, orderByFilter) ->
 			mapping.visMax = parseFloat($scope.addForm.newMax)
 			mapping.isNumericMapping = true
 			mapping.ids = data['ids']
-			data.mappings[dataAttr].push([visAttr, mapping])
+			console.log(data.mappings);
+			if data.mappings[dataAttr]
+				data.mappings[dataAttr].push([visAttr, mapping])
+			else
+				data.mappings[dataAttr] = [[visAttr, mapping]]
 	
 	$scope.submitLinearMappingChange = ($event, dataAttr, mapping) ->
 		if $event.keyCode is 13

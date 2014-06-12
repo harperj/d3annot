@@ -3,6 +3,7 @@ elemToLink = null
 lastNode = null
 num_links = 0
 
+
 getPointFromLine = (node, ind) ->
 	segList = node.animatedPathSegList
 	console.log "made it here"
