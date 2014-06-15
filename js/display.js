@@ -61,6 +61,15 @@
     }]);
 
     restylingApp.controller('MappingsListController', ['$scope', function($scope) {
+
+        $scope.isLinear = function(mapping) {
+            return mapping.type === "linear";
+        };
+
+        $scope.isNominal = function(mapping) {
+            return mapping.type === "nominal";
+        };
+
         $scope.nominalMappingChange = function($event, mapping, from) {
             if ($event.keyCode === 13) {
                 var newVal = angular.element($event.target).val();

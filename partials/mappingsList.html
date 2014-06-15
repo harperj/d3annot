@@ -2,16 +2,16 @@
     <h3 class="sectionHeader">Mappings:</h3>
     <div class="panel-group" id="mappings" ng-repeat="mapping in data[selectedSchema].mappings">
         <div class="panel panel-default">
-            <div class="panel-heading btn-toolbar" style="background-color:#7fc97f;">
-                <a data-toggle="collapse" data-parent="#mappings" href="#{{(mapping.data+mapping.attr).replace(' ','')}}">
+            <div ng-class="{'linear': isLinear(mapping), 'nominal': isNominal(mapping), 'panel-heading': true, 'btn-toolbar': true}">
+                <a data-toggle="collapse" style="color:black;" data-parent="#mappings" href="#mapping{{$index}}">
                     {{mapping.data}} &#10141; {{mapping.attr}}
-                    <button style="border: 0;float: right;background-color:#7fc97f;" type="button" class="btn btn-default btn-xs">
+                    <button style="border: 0;float: right;background-color:inherit;" type="button" class="btn btn-default btn-xs">
                         <!-- ng-click="removeMapping(dataAttr, mappedAttr)"  -->
                         <span class="glyphicon glyphicon-remove"></span>
                     </button>
                 </a>
             </div>
-            <div id="{{(mapping.data+mapping.attr).replace(' ','')}}" class="panel-collapse collapse" ng-if="mapping.type === 'nominal'">
+            <div id="mapping{{$index}}" class="panel-collapse collapse" ng-if="mapping.type === 'nominal'">
                 <table class="changeMapping table">
                     <tr>
                         <th>
@@ -31,7 +31,7 @@
                     </tr>
                 </table>
             </div>
-            <div id="{{(mapping.data+mapping.attr).replace(' ','')}}" class="panel-collapse collapse" ng-if="mapping.type === 'linear'">
+            <div id="mapping{{$index}}" class="panel-collapse collapse" ng-if="mapping.type === 'linear'">
                 <table class="changeMapping table">
                     <tr>
                         <th></th>

@@ -3,6 +3,13 @@
     width: 50%;
 }
 
+div.panel div.linear {
+    background-color: #7fc97f;
+}
+
+div.panel div.nominal {
+    background-color: #beaed4;
+}
 
 body.ng-scope {
     font-size: 8pt;
