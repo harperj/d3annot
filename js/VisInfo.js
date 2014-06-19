@@ -59,18 +59,16 @@ var VisDeconstructor = function(svgNode, markNodes, ids, schemas) {
         var schema = getSchemaFromId(nodeId);
         var svg = currentNode.ownerSVGElement;
 
-        var newNode = document.createElementNS("http://www.w3.org/2000/svg", currentNode.tagName);
+        var newNode = getNewNodeFromShape(attrs['shape']);
 
         currentNode.parentNode.appendChild(newNode);
-        console.log(attrs);
+
         _.each(attrs, function(val, attr) {
             if (val !== null) {
                d3.select(newNode).style(attr, val);
             }
         });
-
         var withinSchemaInd = schemas[schema].ids.indexOf(nodeId);
-        console.log(schemas[schema].nodeAttrs[withinSchemaInd]);
         _.each(schemas[schema].nodeAttrs[withinSchemaInd], function(val, attr) {
             if (attr === "text") {
                 $(newNode).text(val);
@@ -79,8 +77,6 @@ var VisDeconstructor = function(svgNode, markNodes, ids, schemas) {
                 d3.select(newNode).attr(attr, val);
             }
         });
-
-        console.log(newNode);
 
         var newNodeBoundingBox = transformedBoundingBox(newNode);
         var newScale = svg.createSVGTransform();
@@ -106,7 +102,6 @@ var VisDeconstructor = function(svgNode, markNodes, ids, schemas) {
         var xTranslate = localDestinationPt.x - localCurrentPt.x;
         var yTranslate = localDestinationPt.y - localCurrentPt.y;
         newTranslate.setTranslate(xTranslate, yTranslate);
-        console.log("translating: " + xTranslate + "," + yTranslate);
         var globalTransform = newNode.getTransformToElement(svg);
 
         newNode.transform.baseVal.appendItem(newScale);
@@ -116,7 +111,21 @@ var VisDeconstructor = function(svgNode, markNodes, ids, schemas) {
         currentNodes[ind] = newNode;
     }
 
-    var transformedBoundingBox = function (el, to) {
+    function getNewNodeFromShape (shapeName) {
+        var newNode = document.createElementNS("http://www.w3.org/2000/svg", shapeName);
+
+        if (shapeName === "rect") {
+            d3.select(newNode).attr("width", 1);
+            d3.select(newNode).attr("height", 1);
+        }
+        else if (shapeName === "circle") {
+            d3.select(newNode).attr("r", 1);
+        }
+
+        return newNode;
+    }
+
+    function transformedBoundingBox (el, to) {
         var bb = el.getBBox();
         var svg = el.ownerSVGElement;
         if (!to) {

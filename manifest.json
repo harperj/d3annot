@@ -33,6 +33,7 @@
         "js/injected.js",
         "js/d3check.js",
         "js/VisInfo.js",
+        "lib/sylvester.js",
         "lib/bootstrap.js",
         "lib/simple_statistics.js",
         "lib/underscore.js",

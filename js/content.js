@@ -67,6 +67,7 @@
         injectJS(chrome.extension.getURL('lib/jquery.js'));
         injectJS(chrome.extension.getURL('lib/underscore.js'));
         injectJS(chrome.extension.getURL('lib/simple_statistics.js'));
+        injectJS(chrome.extension.getURL('lib/sylvester.js'));
         injectJS(chrome.extension.getURL('js/VisInfo.js'));
         injectJS(chrome.extension.getURL('js/injected.js'));
     }

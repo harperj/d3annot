@@ -48,7 +48,8 @@
                     <a ng-click="$parent.action='Nominal'">Nominal</a>
                 </li>
                 <li class="deconDropDownItem">
-                    <a ng-click="$parent.action='Linear'">Linear</a>
+                    <a ng-if="numberFieldsSelected()" ng-click="$parent.action='Linear'">Linear</a>
+                    <a style="color:grey;" ng-if="!numberFieldsSelected()" ng-click="$parent.action='Linear'">Linear</a>
                 </li>
             </ul>
         </div>

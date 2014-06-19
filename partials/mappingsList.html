@@ -5,8 +5,8 @@
             <div ng-class="{'linear': isLinear(mapping), 'nominal': isNominal(mapping), 'panel-heading': true, 'btn-toolbar': true}">
                 <a data-toggle="collapse" style="color:black;" data-parent="#mappings" href="#mapping{{$index}}">
                     {{mapping.data}} &#10141; {{mapping.attr}}
-                    <button style="border: 0;float: right;background-color:inherit;" type="button" class="btn btn-default btn-xs">
-                        <!-- ng-click="removeMapping(dataAttr, mappedAttr)"  -->
+                    <button ng-click="removeMapping(mapping)" style="border: 0;float: right;background-color:inherit;"
+                            type="button" class="btn btn-default btn-xs">
                         <span class="glyphicon glyphicon-remove"></span>
                     </button>
                 </a>

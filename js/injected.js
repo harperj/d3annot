@@ -29,6 +29,7 @@
         console.log(schematizedData);
         _.each(schematizedData, function(schema, i) {
             schematizedData[i].mappings = extractMappings(schema);
+            extractMultiLinearMapping(schema);
         });
 
         deconstructor = new VisDeconstructor(svgNode, dataNodes.nodes, dataNodes.ids, schematizedData);
@@ -117,12 +118,13 @@
             }
         }
 
+        var nominalMapping;
         if(typeof attrArray[0] === "object") {
             /** @TODO Handle linear mappings on colors correctly. */
             /** @TODO Detect colors rather than all objects. */
             var colorStringArray = _.map(attrArray, function(color) {return "rgb(" + color.r +
                 "," + color.g + "," + color.b + ")"});
-            var nominalMapping = extractNominalMapping(dataArray, colorStringArray);
+            nominalMapping = extractNominalMapping(dataArray, colorStringArray);
             if (nominalMapping) {
                 nominalMapping.type = 'nominal';
                 nominalMapping.data = dataName;
@@ -132,7 +134,7 @@
             }
         }
         else {
-            var nominalMapping = extractNominalMapping(dataArray, attrArray);
+            nominalMapping = extractNominalMapping(dataArray, attrArray);
             if (nominalMapping) {
                 nominalMapping.type = 'nominal';
                 nominalMapping.data = dataName;
@@ -186,12 +188,10 @@
             mapping[key] = mapping[key][0];
         });
 
-        var mappingData = {
+        return  {
             type: "nominal",
             params: mapping
-        }
-
-        return mappingData;
+        };
     }
 
     /**
@@ -215,16 +215,205 @@
             };
             var dataMin = _.min(dataArray);
             var dataMax = _.max(dataArray);
-            var params = {
+            mapping.params = {
                 dataMin: dataMin,
                 attrMin: linearRegressionLine(dataMin),
                 dataMax: dataMax,
                 attrMax: linearRegressionLine(dataMax)
-            }
-            mapping.params = params;
+            };
             return mapping;
         }
         return false;
+    }
+
+    function extractMultiLinearMapping(schema) {
+        var numberFields = [];
+        var numberAttrs = [];
+        for (var field in schema.data) {
+            if (typeof schema.data[field][0] === "number") {
+                numberFields.push(field);
+            }
+        }
+        for (var attr in schema.attrs) {
+            if (typeof schema.attrs[attr][0] === "number") {
+                numberAttrs.push(attr);
+            }
+        }
+
+        _.each(numberAttrs, function(attr) {
+            for (var i = 0; i < numberFields.length; ++i) {
+                var combinations = k_combinations(numberFields, i);
+                var mappings = [];
+                _.each(combinations, function(fieldSet) {
+                    var xMatData = [];
+                    for(var i = 0; i < schema.data[numberFields[0]].length; ++i) {
+                        var row = [1];
+                        for(var j = 0; j < fieldSet.length; ++j) {
+                            var fieldName = fieldSet[j];
+                            row.push(schema.data[fieldName][i]);
+                        }
+                        xMatData.push(row);
+                    }
+                    //console.log(xMatData);
+                    var xMatrix = $M(xMatData);
+                    var yVector = $V(schema.attrs[attr]);
+                    var coeffs = findCoefficients(xMatrix, yVector).elements;
+                    var err = findRSquaredError(xMatrix, yVector, coeffs);
+                    if (err > 0.98) {
+                        var mapping;
+                        if (i === 1) {
+                            mapping = {
+                                type: 'linear',
+                                data: fieldSet[0],
+                                attr: attr,
+                                params: {
+                                    dataMin: _.min(schema.data[fieldSet[0]]),
+                                    dataMax: _.max(schema.data[fieldSet[0]]),
+                                    attrMin: _.min(schema.attrs[attr]),
+                                    attrMax: _.max(schema.attrs[attr])
+                                }
+                            };
+                        }
+                        else {
+                            mapping = {
+                                type: 'multilinear',
+                                data: fieldSet,
+                                attr: attr,
+                                params: {
+
+                                }
+                            }
+                        }
+                        mappings.push(mapping);
+                    }
+
+                });
+            }
+        });
+    }
+
+    function findRSquaredError(xMatrix, yVector, coeffs) {
+        var squaredError = 0;
+        var sumSquares = 0;
+
+        var sum = yVector.elements.reduce(function(a, b) { return a + b });
+        var yAvg = sum / yVector.elements.length;
+
+        for (var i = 1; i < yVector.elements.length+1; ++i) {
+            var pred = 0;
+            for (var j = 1; j < xMatrix.cols()+1; ++j) {
+                pred += xMatrix.e(i, j) * coeffs[j-1];
+            }
+            squaredError += (yVector.e(i) - pred) * (yVector.e(i) - pred);
+            sumSquares += (yVector.e(i) - yAvg) * (yVector.e(i) - yAvg);
+        }
+
+        return 1 - (squaredError / sumSquares);
+    }
+
+    /**
+     * K-combinations
+     *
+     * Get k-sized combinations of elements in a set.
+     *
+     * Usage:
+     *   k_combinations(set, k)
+     *
+     * Parameters:
+     *   set: Array of objects of any type. They are treated as unique.
+     *   k: size of combinations to search for.
+     *
+     * Return:
+     *   Array of found combinations, size of a combination is k.
+     *
+     * Examples:
+     *
+     *   k_combinations([1, 2, 3], 1)
+     *   -> [[1], [2], [3]]
+     *
+     *   k_combinations([1, 2, 3], 2)
+     *   -> [[1,2], [1,3], [2, 3]
+     *
+     *   k_combinations([1, 2, 3], 3)
+     *   -> [[1, 2, 3]]
+     *
+     *   k_combinations([1, 2, 3], 4)
+     *   -> []
+     *
+     *   k_combinations([1, 2, 3], 0)
+     *   -> []
+     *
+     *   k_combinations([1, 2, 3], -1)
+     *   -> []
+     *
+     *   k_combinations([], 0)
+     *   -> []
+     */
+    function k_combinations(set, k) {
+        var i, j, combs, head, tailcombs;
+
+        if (k > set.length || k <= 0) {
+            return [];
+        }
+
+        if (k == set.length) {
+            return [set];
+        }
+
+        if (k == 1) {
+            combs = [];
+            for (i = 0; i < set.length; i++) {
+                combs.push([set[i]]);
+            }
+            return combs;
+        }
+
+        // Assert {1 < k < set.length}
+
+        combs = [];
+        for (i = 0; i < set.length - k + 1; i++) {
+            head = set.slice(i, i+1);
+            tailcombs = k_combinations(set.slice(i + 1), k - 1);
+            for (j = 0; j < tailcombs.length; j++) {
+                combs.push(head.concat(tailcombs[j]));
+            }
+        }
+        return combs;
+    }
+
+    /**
+     * Combinations
+     *
+     * Get all possible combinations of elements in a set.
+     *
+     * Usage:
+     *   combinations(set)
+     *
+     * Examples:
+     *
+     *   combinations([1, 2, 3])
+     *   -> [[1],[2],[3],[1,2],[1,3],[2,3],[1,2,3]]
+     *
+     *   combinations([1])
+     *   -> [[1]]
+     */
+    function combinations(set) {
+        var k, i, combs, k_combs;
+        combs = [];
+
+        // Calculate all non-empty k-combinations
+        for (k = 1; k <= set.length; k++) {
+            k_combs = k_combinations(set, k);
+            for (i = 0; i < k_combs.length; i++) {
+                combs.push(k_combs[i]);
+            }
+        }
+        return combs;
+    }
+
+    function findCoefficients(xMatrix, yVector) {
+        var xTrans = xMatrix.transpose();
+        return xTrans.multiply(xMatrix).inverse().multiply(xTrans).multiply(yVector);
     }
 
     /**
@@ -424,16 +613,12 @@
         var style = window.getComputedStyle(domNode, null);
         var styleObject = {};
 
-        var camelize = function(a,b){
-            return b.toUpperCase();
-        };
-
         for (var i = 0; i < style.length; ++i) {
             var prop = style[i];
-            //var camelCaseProp = prop.replace(/\-([a-z])/g, camelize);
             styleObject[prop] = style.getPropertyValue(prop);
         }
 
+        styleObject["vector-effect"] = "non-scaling-stroke";
         return styleObject;
     }
 

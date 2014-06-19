@@ -70,6 +70,32 @@
             return mapping.type === "nominal";
         };
 
+        $scope.removeMapping = function(mapping) {
+            var schema = $scope.data[$scope.selectedSchema];
+            var mappingInd = schema.mappings.indexOf(mapping);
+
+            var replaceVal;
+            if (mapping.type === "nominal") {
+                replaceVal = schema.attrs[mapping.attr][0];
+            }
+            else {
+                replaceVal = mapping.params.attrMin;
+            }
+
+            // remove mapping
+            schema.mappings.splice(mappingInd, 1);
+
+            // update vals accordingly
+            var message = {
+                type: "update",
+                attr: mapping.attr,
+                val: replaceVal,
+                ids: schema.ids
+            };
+            $scope.doUpdate(message);
+
+        };
+
         $scope.nominalMappingChange = function($event, mapping, from) {
             if ($event.keyCode === 13) {
                 var newVal = angular.element($event.target).val();
@@ -168,6 +194,15 @@
     restylingApp.controller('AddMappingsController', ['$scope', function($scope) {
         $scope.dataFieldSelected = "";
         $scope.attrSelected = "";
+
+        $scope.linearMappingAvailable = function() {
+            var schema = $scope.data[$scope.selectedSchema];
+            if (typeof schema.attrs[$scope.attrSelected][0] !== "number"
+                || typeof schema.data[$scope.dataFieldSelected][0] !== "number") {
+                return false;
+            }
+            return true;
+        };
 
         $scope.isMapped = function(attr) {
             var schema = $scope.data[$scope.selectedSchema];
