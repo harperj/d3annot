@@ -3,7 +3,7 @@
  */
 'use strict';
 
-var VisDeconstructor = function(svgNode, markNodes, ids, schemas) {
+var VisUpdater = function(svgNode, markNodes, ids, schemas) {
 
     var currentNodes = new Array(markNodes.length);
     _.each(markNodes, function(markNode, ind) {

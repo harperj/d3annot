@@ -33,6 +33,7 @@
         function($scope, chromeMessageService) {
             $scope.selectedSchema = 0;
             $scope.data = [];
+            $scope.selectedRows = [];
 
             // Load data from the visualization as it arrives
             function setupMessageServiceData (data) {
@@ -47,6 +48,7 @@
             $scope.selectSchema = function(schema) {
                 console.log($scope.data);
                 $scope.selectedSchema = $scope.data.indexOf(schema);
+                $scope.selectedRows = [];
                 console.log($scope.selectedSchema);
             };
 
@@ -57,7 +59,40 @@
         }]);
 
     restylingApp.controller('DataTableController', ['$scope', 'orderByFilter', function($scope, orderByFilter) {
+        $scope.splitSchema = function() {
+            if ($scope.selectedRows.length > 0) {
+                var schema = $scope.data[$scope.selectedSchema];
+                var newSchema = {
+                    ids: $scope.selectedRows,
+                    data: {},
+                    attrs: {},
+                    mappings: []
+                };
+                _.each($scope.selectedRows, function(id) {
+                    var ind = schema.ids.indexOf(id);
+                    schema.ids.splice(ind, 1);
+                    _.each(schema.data, function(val, key) {
+                        if (newSchema.data[key]) {
+                            newSchema.data[key].push(val[ind]);
+                        }
+                        else {
+                            newSchema.data[key] = [val[ind]]
+                        }
+                        schema.data[key].splice(ind, 1);
+                    });
+                    _.each(schema.attrs, function(val, key) {
+                        if (newSchema.attrs[key]) {
+                            newSchema.attrs[key].push(val[ind]);
+                        }
+                        else {
+                            newSchema.attrs[key] = [val[ind]]
+                        }
+                        schema.attrs[key].splice(ind, 1);
+                    });
+                });
 
+            }
+        }
     }]);
 
     restylingApp.controller('MappingsListController', ['$scope', function($scope) {
