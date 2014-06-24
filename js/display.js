@@ -190,7 +190,7 @@
 
                 var ids = _.map(changeInds, function (ind) {
                     return $scope.data[mappingSchemaInd].ids[ind]
-                })
+                });
                 var message = {
                     type: "update",
                     attr: mapping.attr,

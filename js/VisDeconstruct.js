@@ -13,25 +13,89 @@ var VisDeconstruct = (function() {
         return nodeAttrs;
     }
 
+    function extractMappings(schema) {
+        return extractNominalMappings(schema).concat(extractMultiLinearMappings(schema));
+    }
+
     /**
      * Given a schema object, returns a list of mappings between data and attribute values in the schema.
      * @param schema
      * @returns {Array}
      */
-    function extractMappings (schema) {
-        var schemaMappings = [];
+    function extractNominalMappings (schema) {
+        var nominalMappings = [];
         _.each(schema.schema, function (schemaItem) {
             var dataArray = schema.data[schemaItem];
 
             var attrNames = _.keys(schema.attrs);
             _.each(attrNames, function (attrName) {
                 var attrArray = schema.attrs[attrName];
-                var pairMapping = extractMapping(schemaItem, attrName, dataArray, attrArray);
-                schemaMappings = schemaMappings.concat(pairMapping);
-
+                var pairMapping = extractNominalMapping(schemaItem, attrName, dataArray, attrArray);
+                nominalMappings = nominalMappings.concat(pairMapping);
             });
         });
+        return nominalMappings;
+    }
 
+    /**
+     * Given a data field and attribute name and value array, returns an array of
+     * mappings between the field and attribute.
+     * @param dataName
+     * @param attrName
+     * @param dataArray
+     * @param attrArray
+     * @returns {Array}
+     */
+    function extractNominalMapping (dataName, attrName, dataArray, attrArray) {
+        if(typeof attrArray[0] === "object") {
+            /** @TODO Handle linear mappings on colors correctly. */
+            /** @TODO Detect colors rather than all objects. */
+            attrArray = _.map(attrArray, function(color) {return "rgb(" + color.r +
+                "," + color.g + "," + color.b + ")"});
+        }
+
+        var mapping = {};
+        _.each(dataArray, function(dataVal, i) {
+            if (mapping.hasOwnProperty(dataVal)) {
+                mapping[dataVal].push(attrArray[i]);
+            }
+            else {
+                mapping[dataVal] = [attrArray[i]];
+            }
+        });
+
+        for (var dataVal in mapping) {
+            mapping[dataVal] = _.uniq(mapping[dataVal]);
+            if (mapping[dataVal].length > 1) {
+                return [];
+            }
+        }
+
+        var mappedVals = _.flatten(_.values(mapping));
+
+        // If multiple attr values are in the range, no one-to-one
+        if (_.uniq(mappedVals).length <  mappedVals.length) {
+            return [];
+        }
+
+        // If it is a trivial mapping, don't save it
+        if (_.keys(mapping).length === 1) {
+            return [];
+        }
+
+        _.each(_.keys(mapping), function(key) {
+            mapping[key] = mapping[key][0];
+        });
+
+        return [{
+            type: 'nominal',
+            params: mapping,
+            data: dataName,
+            attr: attrName
+        }];
+    }
+
+    function filterExtraNominalMappings (schemaMappings) {
         var attrsWithLinearMapping = [];
         _.each(schemaMappings, function(schemaMapping) {
             if (schemaMapping.type === "linear") {
@@ -52,102 +116,6 @@ var VisDeconstruct = (function() {
         return schemaMappings;
     }
 
-    /**
-     * Given a data field and attribute name and value array, returns an array of
-     * mappings between the field and attribute.
-     * @param dataName
-     * @param attrName
-     * @param dataArray
-     * @param attrArray
-     * @returns {Array}
-     */
-    function extractMapping (dataName, attrName, dataArray, attrArray) {
-        var schemaMappings = [];
-
-        if (typeof dataArray[0] === "number" && typeof attrArray[0] === "number") {
-            var linearMapping = extractLinearMapping(dataArray, attrArray);
-            if (linearMapping) {
-                linearMapping.data = dataName;
-                linearMapping.attr = attrName;
-                schemaMappings.push(linearMapping);
-            }
-        }
-
-        var nominalMapping;
-        if(typeof attrArray[0] === "object") {
-            /** @TODO Handle linear mappings on colors correctly. */
-            /** @TODO Detect colors rather than all objects. */
-            var colorStringArray = _.map(attrArray, function(color) {return "rgb(" + color.r +
-                "," + color.g + "," + color.b + ")"});
-            nominalMapping = extractNominalMapping(dataArray, colorStringArray);
-            if (nominalMapping) {
-                nominalMapping.type = 'nominal';
-                nominalMapping.data = dataName;
-                nominalMapping.attr = attrName;
-                schemaMappings.push(nominalMapping);
-                //console.log(nominalMapping);
-            }
-        }
-        else {
-            nominalMapping = extractNominalMapping(dataArray, attrArray);
-            if (nominalMapping) {
-                nominalMapping.type = 'nominal';
-                nominalMapping.data = dataName;
-                nominalMapping.attr = attrName;
-                schemaMappings.push(nominalMapping);
-                //console.log(nominalMapping);
-            }
-        }
-
-        return schemaMappings;
-    }
-
-    /**
-     * Given a data array and attribute array, finds a nominal mapping between them if it exists.
-     * @param dataArray
-     * @param attrArray
-     * @returns {*}
-     */
-    function extractNominalMapping(dataArray, attrArray) {
-
-        var mapping = {};
-        _.each(dataArray, function(dataVal, i) {
-            if (mapping.hasOwnProperty(dataVal)) {
-                mapping[dataVal].push(attrArray[i]);
-            }
-            else {
-                mapping[dataVal] = [attrArray[i]];
-            }
-        });
-
-        for (var dataVal in mapping) {
-            mapping[dataVal] = _.uniq(mapping[dataVal]);
-            if (mapping[dataVal].length > 1) {
-                return false;
-            }
-        }
-
-        var mappedVals = _.flatten(_.values(mapping));
-
-        // If multiple attr values are in the range, no one-to-one
-        if (_.uniq(mappedVals).length <  mappedVals.length) {
-            return false;
-        }
-
-        // If it is a trivial mapping, don't save it
-        if (_.keys(mapping).length === 1) {
-            return false;
-        }
-
-        _.each(_.keys(mapping), function(key) {
-            mapping[key] = mapping[key][0];
-        });
-
-        return  {
-            type: "nominal",
-            params: mapping
-        };
-    }
 
     /**
      * Given a data array and attribute array, finds a linear mapping between them if it exists.
@@ -181,7 +149,7 @@ var VisDeconstruct = (function() {
         return false;
     }
 
-    function extractMultiLinearMapping(schema) {
+    function extractMultiLinearMappings(schema) {
         var numberFields = [];
         var numberAttrs = [];
         for (var field in schema.data) {
@@ -220,7 +188,7 @@ var VisDeconstruct = (function() {
                         var mapping;
                         mapping = {
                             type: 'linear',
-                            data: fieldSet,
+                            data: fieldSet.reverse(),
                             attr: attr,
                             params: {
                                 coeffs: coeffs
@@ -237,6 +205,7 @@ var VisDeconstruct = (function() {
             }
         });
         console.log(allLinearMappings);
+        return allLinearMappings;
     }
 
     function findRSquaredError(xMatrix, yVector, coeffs) {
