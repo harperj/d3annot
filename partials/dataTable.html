@@ -5,7 +5,7 @@
             <div class="dataContainer" ng-repeat="schema in data | orderBy:numNodes:true">
                 <button ng-click="selectSchema(schema)">Select</button>
                 <h3 class="sectionHeader">Data Table {{$index+1}}</h3>
-                <table class="table dataTable">
+                <table class="table dataTable" ng-right-click="splitSchema()">
                     <thead ng-click="">
                     <tr class="headerRow">
                         <th>Mark</th>
@@ -16,7 +16,7 @@
                         </th>
                     </tr>
                     </thead>
-                    <tr ng-repeat="id in schema.ids"> <!-- ng-click="toggleSelect(dataSet, i)" ng-class="itemClass(dataSet, i)" -->
+                    <tr ng-repeat="id in schema.ids" ng-click="selectRow(id)" ng-class="{selectedRow: rowIsSelected(id)}">
                         <td><svg-inject ind="$index" schema="schema"></svg-inject></td>
                         <td>{{schema.data['deconID'][$index]}}</td>
                         <td ng-repeat="(dataField, dataValues) in schema.data" ng-if="dataField != 'deconID'">{{dataValues[schema.ids.indexOf(id)]}}</td>

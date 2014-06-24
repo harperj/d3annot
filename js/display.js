@@ -59,6 +59,20 @@
         }]);
 
     restylingApp.controller('DataTableController', ['$scope', 'orderByFilter', function($scope, orderByFilter) {
+
+        $scope.selectRow = function(id) {
+            if ($scope.selectedRows.indexOf(id) !== -1) {
+                $scope.selectedRows.splice($scope.selectedRows.indexOf(id), 1);
+            }
+            else {
+                $scope.selectedRows.push(id);
+            }
+        };
+
+        $scope.rowIsSelected = function(id) {
+            return $scope.selectedRows.indexOf(id) !== -1;
+        };
+
         $scope.splitSchema = function() {
             if ($scope.selectedRows.length > 0) {
                 var schema = $scope.data[$scope.selectedSchema];
@@ -66,11 +80,16 @@
                     ids: $scope.selectedRows,
                     data: {},
                     attrs: {},
+                    nodeAttrs: [],
                     mappings: []
                 };
                 _.each($scope.selectedRows, function(id) {
                     var ind = schema.ids.indexOf(id);
                     schema.ids.splice(ind, 1);
+
+                    newSchema.nodeAttrs.push(schema.nodeAttrs[ind]);
+                    schema.nodeAttrs.splice(ind, 1);
+
                     _.each(schema.data, function(val, key) {
                         if (newSchema.data[key]) {
                             newSchema.data[key].push(val[ind]);
@@ -90,7 +109,15 @@
                         schema.attrs[key].splice(ind, 1);
                     });
                 });
+                newSchema.schema = _.keys(newSchema.data);
 
+                schema.mappings = VisDeconstruct.extractMappings(schema);
+                console.log("new schema");
+                console.log(newSchema);
+                newSchema.mappings = VisDeconstruct.extractMappings(newSchema);
+                console.log(newSchema);
+                $scope.data.push(newSchema);
+                $scope.selectedRows = [];
             }
         }
     }]);
@@ -280,6 +307,18 @@
         };
 
     }]);
+
+    restylingApp.directive('ngRightClick', function($parse) {
+        return function(scope, element, attrs) {
+            var fn = $parse(attrs.ngRightClick);
+            element.bind('contextmenu', function(event) {
+                scope.$apply(function() {
+                    event.preventDefault();
+                    fn(scope, {$event:event});
+                });
+            });
+        };
+    });
 
     restylingApp.directive('svgInject', function($compile) {
         return {

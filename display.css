@@ -39,7 +39,6 @@ div.bottomSticky {
 
 table.changeMapping {
     margin-bottom: 3px;
-
 }
 
 div.dataContainer {
@@ -72,6 +71,10 @@ table.dataTable {
 .dataTable>thead>tr>th, .dataTable>tbody>tr>th, .dataTable>tfoot>tr>th, .dataTable>thead>tr>td, .dataTable>tbody>tr>td, .dataTable>tfoot>tr>td {
     padding: 0px !important;
     vertical-align: middle;
+}
+
+tr.selectedRow {
+    background-color: darkgrey;
 }
 
 table tr th span.rowHead {

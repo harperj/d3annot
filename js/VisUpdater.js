@@ -44,8 +44,8 @@ var VisUpdater = function(svgNode, markNodes, ids, schemas) {
 
     function updateNode(nodeId, changeAttr, changeVal) {
         var schemaInd = getSchemaFromId(nodeId);
-        console.log(changeVal);
-        console.log(changeAttr);
+        //console.log(changeVal);
+        //console.log(changeAttr);
 
         var withinSchemaInd = schemas[schemaInd].ids.indexOf(nodeId);
         schemas[schemaInd].attrs[changeAttr][withinSchemaInd] = changeVal;

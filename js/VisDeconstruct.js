@@ -195,8 +195,10 @@ var VisDeconstruct = (function() {
             }
         }
 
+        var allLinearMappings = [];
+
         _.each(numberAttrs, function(attr) {
-            for (var i = 0; i < numberFields.length; ++i) {
+            for (var i = 1; i <= numberFields.length; ++i) {
                 var combinations = k_combinations(numberFields, i);
                 var mappings = [];
                 _.each(combinations, function(fieldSet) {
@@ -214,37 +216,27 @@ var VisDeconstruct = (function() {
                     var yVector = $V(schema.attrs[attr]);
                     var coeffs = findCoefficients(xMatrix, yVector).elements;
                     var err = findRSquaredError(xMatrix, yVector, coeffs);
-                    if (err > 0.98) {
+                    if (err > 0.99) {
                         var mapping;
-                        if (i === 1) {
-                            mapping = {
-                                type: 'linear',
-                                data: fieldSet[0],
-                                attr: attr,
-                                params: {
-                                    dataMin: _.min(schema.data[fieldSet[0]]),
-                                    dataMax: _.max(schema.data[fieldSet[0]]),
-                                    attrMin: _.min(schema.attrs[attr]),
-                                    attrMax: _.max(schema.attrs[attr])
-                                }
-                            };
-                        }
-                        else {
-                            mapping = {
-                                type: 'multilinear',
-                                data: fieldSet,
-                                attr: attr,
-                                params: {
-
-                                }
+                        mapping = {
+                            type: 'linear',
+                            data: fieldSet,
+                            attr: attr,
+                            params: {
+                                coeffs: coeffs
                             }
-                        }
+                        };
                         mappings.push(mapping);
                     }
 
                 });
+                if (mappings.length > 0) {
+                    allLinearMappings.push.apply(allLinearMappings, mappings);
+                    break;
+                }
             }
         });
+        console.log(allLinearMappings);
     }
 
     function findRSquaredError(xMatrix, yVector, coeffs) {

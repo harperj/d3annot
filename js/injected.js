@@ -29,7 +29,7 @@
         console.log(schematizedData);
         _.each(schematizedData, function(schema, i) {
             schematizedData[i].mappings = VisDeconstruct.extractMappings(schema);
-            VisDeconstruct.extractMultiLinearMapping(schema);
+            //VisDeconstruct.extractMultiLinearMapping(schema);
         });
 
         updater = new VisUpdater(svgNode, dataNodes.nodes, dataNodes.ids, schematizedData);
