@@ -29,6 +29,15 @@
         }
     });
 
+    restylingApp.filter('range', function() {
+        return function(input, total) {
+            total = parseInt(total);
+            for (var i=0; i<total; i++)
+                input.push(i);
+            return input;
+        };
+    });
+
     restylingApp.controller('RestylingAppController', ['$scope', 'chromeMessageService',
         function($scope, chromeMessageService) {
             $scope.selectedSchema = 0;
@@ -54,39 +63,68 @@
 
             $scope.doUpdate = function(message) {
                 chromeMessageService.sendMessage(message);
+            };
+
+            $scope.getNumber = function(number) {
+                return new Array(number);
             }
 
         }]);
 
     restylingApp.controller('DataTableController', ['$scope', 'orderByFilter', function($scope, orderByFilter) {
 
-        $scope.selectRow = function(id) {
-            if ($scope.selectedRows.indexOf(id) !== -1) {
-                $scope.selectedRows.splice($scope.selectedRows.indexOf(id), 1);
+        $scope.findSchemaById = function(id) {
+            var schemaInd;
+            _.each($scope.data, function(schema, ind) {
+                if (schema.ids.indexOf(id) > -1) {
+                    schemaInd = ind;
+                }
+            });
+            return schemaInd;
+        };
+
+        $scope.selectRow = function(schema, ind) {
+
+            var rowSchemaInd = $scope.data.indexOf(schema);
+            if (rowSchemaInd !== $scope.selectedSchema) {
+                $scope.selectSchema($scope.data[rowSchemaInd]);
+            }
+
+            if ($scope.selectedRows.indexOf(ind) !== -1) {
+                $scope.selectedRows.splice($scope.selectedRows.indexOf(ind), 1);
             }
             else {
-                $scope.selectedRows.push(id);
+                $scope.selectedRows.push(ind);
             }
         };
 
-        $scope.rowIsSelected = function(id) {
-            return $scope.selectedRows.indexOf(id) !== -1;
+        $scope.rowIsSelected = function(schema, ind) {
+            if ($scope.data.indexOf(schema) === $scope.selectedSchema) {
+                return $scope.selectedRows.indexOf(ind) !== -1;
+            }
+            else {
+                return false;
+            }
         };
 
         $scope.splitSchema = function() {
             if ($scope.selectedRows.length > 0) {
                 var schema = $scope.data[$scope.selectedSchema];
+                $scope.selectedRows = $scope.selectedRows.sort(function(a, b){return b-a});
+
                 var newSchema = {
-                    ids: $scope.selectedRows,
+                    ids: [],
                     data: {},
                     attrs: {},
                     nodeAttrs: [],
                     mappings: []
                 };
-                _.each($scope.selectedRows, function(id) {
-                    var ind = schema.ids.indexOf(id);
-                    schema.ids.splice(ind, 1);
+                console.log("Selected rows:");
+                console.log($scope.selectedRows);
 
+                _.each($scope.selectedRows, function(ind, count) {
+                    newSchema.ids.push(schema.ids[ind]);
+                    schema.ids.splice(ind, 1);
                     newSchema.nodeAttrs.push(schema.nodeAttrs[ind]);
                     schema.nodeAttrs.splice(ind, 1);
 
@@ -110,7 +148,10 @@
                     });
                 });
                 newSchema.schema = _.keys(newSchema.data);
+                newSchema.numNodes = newSchema.ids.length;
+                schema.numNodes = schema.ids.length;
 
+                console.log(schema);
                 schema.mappings = VisDeconstruct.extractMappings(schema);
                 console.log("new schema");
                 console.log(newSchema);
@@ -122,7 +163,17 @@
         }
     }]);
 
+
+
     restylingApp.controller('MappingsListController', ['$scope', function($scope) {
+
+        $scope.linearUpdateCoeffs = [];
+
+        $scope.selectMapping = function(mapping) {
+            if (mapping.type === "linear") {
+                $scope.linearUpdateCoeffs = mapping.params.coeffs;
+            }
+        };
 
         $scope.isLinear = function(mapping) {
             return mapping.type === "linear";
@@ -169,14 +220,14 @@
                 var mappingSchemaInd = -1;
 
                 // update mapping with new value and find schema ind
-                    _.each($scope.data, function (schema, schemaInd) {
-                        var mappingInd = schema.mappings.indexOf(mapping);
-                        if (mappingInd !== -1) {
-                            console.log("Found mapping.");
-                            schema.mappings[mappingInd].params[from] = newVal;
-                            mappingSchemaInd = schemaInd;
-                        }
-                    });
+                 _.each($scope.data, function (schema, schemaInd) {
+                     var mappingInd = schema.mappings.indexOf(mapping);
+                     if (mappingInd !== -1) {
+                         console.log("Found mapping.");
+                         schema.mappings[mappingInd].params[from] = newVal;
+                         mappingSchemaInd = schemaInd;
+                     }
+                 });
 
 
                 // update data with new attr vals and collect indices
@@ -201,50 +252,50 @@
             }
         };
 
-        $scope.linearMappingChange = function($event, mapping, isMin) {
+        $scope.linearMappingChange = function($event, mapping, changedInd) {
             if ($event.keyCode !== 13) {
                 return;
             }
 
             var newVal = +angular.element($event.target).val();
+
             var mappingSchemaInd = -1;
 
             _.each($scope.data, function(schema, schemaInd) {
                 var mappingInd = schema.mappings.indexOf(mapping);
                 if (mappingInd !== -1) {
-                    if (isMin) {
-                        mapping.params.attrMin = newVal;
+                    for (var i = 0; i < $scope.linearUpdateCoeffs.length; ++i) {
+                        mapping.params.coeffs[i] = $scope.linearUpdateCoeffs[i];
                     }
-                    else {
-                        mapping.params.attrMax = newVal;
-                    }
-
                     mappingSchemaInd = schemaInd;
                 }
             });
-            var regressionData;
-            console.log(mapping);
-            if (isMin) {
-                regressionData = [[mapping.params.dataMin, newVal], [mapping.params.dataMax, mapping.params.attrMax]];
-            }
-            else {
-                regressionData = [[mapping.params.dataMin, mapping.params.attrMin], [mapping.params.dataMax, newVal]];
-            }
 
-            console.log(regressionData);
-
-            var regression = ss.linear_regression().data(regressionData);
-            var regressionLine = regression.line();
-            console.log(regression.m());
-            console.log(regression.b());
             var attrArray = $scope.data[mappingSchemaInd].attrs[mapping.attr];
-            var dataArray = $scope.data[mappingSchemaInd].data[mapping.data];
+            var schema = $scope.data[mappingSchemaInd];
             _.each(attrArray, function(attrVal, ind) {
-                attrArray[ind] = regressionLine(dataArray[ind]);
+
+                var newAttrVal = 0;
+                _.each(mapping.params.coeffs, function(coeff, coeffInd) {
+                    if (coeffInd === changedInd) {
+                        mapping.params.coeffs[changedInd] = newVal;
+                        coeff = newVal;
+                    }
+                    if (coeffInd < mapping.data.length) {
+                        newAttrVal += coeff * schema.data[mapping.data[coeffInd]][ind];
+                        console.log(coeff * schema.data[mapping.data[coeffInd]][ind] + "+");
+                    }
+                    else {
+                        console.log(coeff);
+                        newAttrVal += coeff;
+                    }
+                });
+
+                attrArray[ind] = newAttrVal;
                 var message = {
                     type: "update",
                     attr: mapping.attr,
-                    val: regressionLine(dataArray[ind]),
+                    val: newAttrVal,
                     ids: [$scope.data[mappingSchemaInd].ids[ind]]
                 };
                 $scope.doUpdate(message);
@@ -292,6 +343,7 @@
                 var inds = [];
                 for (var i = 0; i < schema.attrs[attr].length; ++i) {
                     if (schema.attrs[attr][i] === oldAttrVal) {
+                        schema.attrs[attr][i] = newAttrVal;
                         inds.push(i);
                     }
                 }
@@ -328,13 +380,18 @@
             },
             restrict: 'E',
             link: function(scope, element, attrs, controller) {
-                scope.$watch("", function(newValue, oldValue) {
+                scope.$watch("schema.numNodes", function(newValue, oldValue) {
+//                    console.log(scope.schema);
+//                    console.log(scope.ind);
                     var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
                     var canvasWidth = 20;
                     svg.setAttribute("width", canvasWidth.toString());
                     svg.setAttribute("height", canvasWidth.toString());
-                    _.each(element[0].children, function() {
-                        $(this).remove();
+                    _.each(element[0].children, function(node) {
+                        $(node).remove();
+                    }, true);
+                    _.each(element[0].children, function(node) {
+                        $(node).remove();
                     }, true);
 
                     var maxWidth = _.max(scope.schema.attrs["width"]);
@@ -409,6 +466,7 @@
 
 
     var transformedBoundingBox = function (el, to) {
+        //console.log(el);
         var bb = el.getBBox();
         var svg = el.ownerSVGElement;
         if (!to) {

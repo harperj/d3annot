@@ -2,7 +2,7 @@
     <h3 class="sectionHeader">Mappings:</h3>
     <div class="panel-group" id="mappings" ng-repeat="mapping in data[selectedSchema].mappings">
         <div class="panel panel-default">
-            <div ng-class="{'linear': isLinear(mapping), 'nominal': isNominal(mapping), 'panel-heading': true, 'btn-toolbar': true}">
+            <div ng-if="!isLinear(mapping)" class="nominal panel-heading btn-toolbar">
                 <a data-toggle="collapse" style="color:black;" data-parent="#mappings" href="#mapping{{$index}}">
                     {{mapping.data}} &#10141; {{mapping.attr}}
                     <button ng-click="removeMapping(mapping)" style="border: 0;float: right;background-color:inherit;"
@@ -11,6 +11,16 @@
                     </button>
                 </a>
             </div>
+            <div ng-if="isLinear(mapping)" class="linear panel-heading btn-toolbar">
+                <a data-toggle="collapse" style="color:black;" data-parent="#mappings" href="#mapping{{$index}}">
+                    <span ng-repeat="datum in mapping.data">{{datum}}<span ng-if="!$last">,</span> </span> &#10141; {{mapping.attr}}
+                    <button ng-click="removeMapping(mapping)" style="border: 0;float: right;background-color:inherit;"
+                            type="button" class="btn btn-default btn-xs">
+                        <span class="glyphicon glyphicon-remove"></span>
+                    </button>
+                </a>
+            </div>
+
             <div id="mapping{{$index}}" class="panel-collapse collapse" ng-if="mapping.type === 'nominal'">
                 <table class="changeMapping table">
                     <tr>
@@ -26,7 +36,8 @@
                             {{from}}
                         </td>
                         <td>
-                            <input class="form-control" value="{{to}}" ng-keypress="nominalMappingChange($event, mapping, from)">
+                            <input class="form-control" value="{{to}}"
+                                   ng-keypress="nominalMappingChange($event, mapping, from)">
                         </td>
                     </tr>
                 </table>
@@ -36,38 +47,16 @@
                     <tr>
                         <th></th>
                         <th>
-                            {{mapping.data}}
-                        </th>
-                        <th>
-                            {{mapping.attr}}
+                            {{mapping.attr}} =
                         </th>
                     </tr>
-                    <tr>
-                        <th>
-                            <span class="rowHead"> Min </span>
-                        </th>
+                    <tr ng-repeat="coeff in mapping.params.coeffs">
                         <td>
-                            {{mapping.params.dataMin}}
+                            <span ng-if="$index !== mapping.data.length">({{mapping.data[$index]}}) * </span>
                         </td>
                         <td>
-                            <input class="form-control" value="{{mapping.params.attrMin}}" ng-keypress="linearMappingChange($event, mapping, true)">
-                        </td>
-<!--
-                        <td>
-                            <svg-inject ind="data[selectedSchema].data[mapping.data].indexOf(mapping.params.dataMin)"
-                                        schema="data[selectedSchema]"></svg-inject>
-                        </td>
--->
-                    </tr>
-                    <tr>
-                        <th class="rowHead">
-                            <span class="rowHead"> Max </span>
-                        </th>
-                        <td>
-                            {{mapping.params.dataMax}}
-                        </td>
-                        <td>
-                            <input class="form-control" value="{{mapping.params.attrMax}}" ng-keypress="linearMappingChange($event, mapping, false)">
+                            <input class="form-control" value="{{coeff}}"
+                                   ng-keypress="linearMappingChange($event, mapping, $index)"> <span ng-if="$index !== mapping.data.length">+</span>
                         </td>
                     </tr>
                 </table>

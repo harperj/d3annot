@@ -44,8 +44,6 @@ var VisUpdater = function(svgNode, markNodes, ids, schemas) {
 
     function updateNode(nodeId, changeAttr, changeVal) {
         var schemaInd = getSchemaFromId(nodeId);
-        //console.log(changeVal);
-        //console.log(changeAttr);
 
         var withinSchemaInd = schemas[schemaInd].ids.indexOf(nodeId);
         schemas[schemaInd].attrs[changeAttr][withinSchemaInd] = changeVal;
@@ -82,11 +80,22 @@ var VisUpdater = function(svgNode, markNodes, ids, schemas) {
         var newScale = svg.createSVGTransform();
         var widthScale = attrs['width'] / newNodeBoundingBox.width;
         var heightScale = attrs['height'] / newNodeBoundingBox.height;
+        if (isNaN(widthScale)) {
+            widthScale = 1;
+        }
+        if (isNaN(heightScale)) {
+            heightScale = 1;
+        }
         newScale.setScale(widthScale, heightScale);
 
+        newNode.transform.baseVal.appendItem(newScale);
+
+        newNodeBoundingBox = transformedBoundingBox(newNode);
+
         var newTranslate = svg.createSVGTransform();
-        var globalTransform = currentNode.getTransformToElement(svg);
+        var globalTransform = newNode.getTransformToElement(svg);
         var globalToLocal = globalTransform.inverse();
+
 
         var newNodeCurrentGlobalPt = svg.createSVGPoint();
         newNodeCurrentGlobalPt.x = newNodeBoundingBox.x + (newNodeBoundingBox.width / 2);
@@ -97,14 +106,16 @@ var VisUpdater = function(svgNode, markNodes, ids, schemas) {
         newNodeDestinationGlobalPt.y = attrs['yPosition'];
 
         var localCurrentPt = newNodeCurrentGlobalPt.matrixTransform(globalToLocal);
+        //localCurrentPt.matrixTransform(newScale.matrix);
+
         var localDestinationPt = newNodeDestinationGlobalPt.matrixTransform(globalToLocal);
+        //localDestinationPt.matrixTransform(newScale.matrix);
 
         var xTranslate = localDestinationPt.x - localCurrentPt.x;
         var yTranslate = localDestinationPt.y - localCurrentPt.y;
         newTranslate.setTranslate(xTranslate, yTranslate);
         var globalTransform = newNode.getTransformToElement(svg);
 
-        newNode.transform.baseVal.appendItem(newScale);
         newNode.transform.baseVal.appendItem(newTranslate);
 
         $(currentNodes[ind]).remove();

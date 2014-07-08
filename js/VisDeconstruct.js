@@ -1,4 +1,26 @@
+var DEBUG = { mappings: [] };
+
 var VisDeconstruct = (function() {
+
+    function deconstruct(svgNode) {
+        var dataNodes = extractData(svgNode);
+        var nodeInfo = {};
+        nodeInfo.attrData = extractVisAttrs(dataNodes);
+        nodeInfo.nodeAttrs = extractNodeAttrs(dataNodes.nodes);
+        nodeInfo.nodes = dataNodes.nodes;
+        var schematizedData = schematize(dataNodes.data, dataNodes.ids, nodeInfo);
+        console.log(schematizedData);
+        _.each(schematizedData, function(schema, i) {
+            schematizedData[i].mappings = extractMappings(schema);
+            //console.log(schematizedData[i].mappings);
+        });
+
+        return {
+            dataNodes: dataNodes,
+            schematizedData: schematizedData
+        };
+    }
+
      function extractNodeAttrs(nodes) {
         var nodeAttrs = [];
         _.each(nodes, function(node) {
@@ -14,7 +36,8 @@ var VisDeconstruct = (function() {
     }
 
     function extractMappings(schema) {
-        return extractNominalMappings(schema).concat(extractMultiLinearMappings(schema));
+        var allMappings = extractNominalMappings(schema).concat(extractMultiLinearMappings(schema));
+        return filterExtraNominalMappings(allMappings);
     }
 
     /**
@@ -182,16 +205,29 @@ var VisDeconstruct = (function() {
                     //console.log(xMatData);
                     var xMatrix = $M(xMatData);
                     var yVector = $V(schema.attrs[attr]);
-                    var coeffs = findCoefficients(xMatrix, yVector).elements;
-                    var err = findRSquaredError(xMatrix, yVector, coeffs);
-                    if (err > 0.99) {
+                    var coeffs = findCoefficients(xMatrix, yVector);
+                    var err = 0;
+                    if (coeffs) {
+                        coeffs = coeffs.elements;
+                        err = findRSquaredError(xMatrix, yVector, coeffs);
+                    }
+
+                    if (err > 0.9999) {
+                        var attrMin = coeffs[0];
+                        _.each(fieldSet, function(field, fieldInd) {
+                            attrMin += _.min(schema.data[field]) * coeffs[fieldInd+1];
+                        });
+                        //console.log("Attr Min:");
+                        //console.log(attrMin);
                         var mapping;
                         mapping = {
                             type: 'linear',
                             data: fieldSet.reverse(),
                             attr: attr,
                             params: {
-                                coeffs: coeffs
+                                attrMin: attrMin,
+                                coeffs: coeffs.reverse(),
+                                err: err
                             }
                         };
                         mappings.push(mapping);
@@ -204,7 +240,7 @@ var VisDeconstruct = (function() {
                 }
             }
         });
-        console.log(allLinearMappings);
+        //console.log(allLinearMappings);
         return allLinearMappings;
     }
 
@@ -329,7 +365,118 @@ var VisDeconstruct = (function() {
 
     function findCoefficients(xMatrix, yVector) {
         var xTrans = xMatrix.transpose();
-        return xTrans.multiply(xMatrix).inverse().multiply(xTrans).multiply(yVector);
+        var inv = xTrans.multiply(xMatrix).inverse();
+        if (inv) {
+            return inv.multiply(xTrans).multiply(yVector);
+        }
+        return null;
+    }
+
+    function checkLine(data, attrs, nodeAttrs, node, id) {
+        if (node.tagName.toLowerCase() !== "path") {
+            return null;
+        }
+
+
+        var dataArray = [];
+        var otherAttrs = {};
+        if (data instanceof Array) {
+            dataArray = data;
+        }
+        else if (data instanceof Object) {
+            for (var attr in data) {
+                if (data[attr] instanceof Array) {
+                    dataArray = data[attr];
+                }
+                else {
+                    otherAttrs[attr] = data[attr];
+                }
+            }
+        }
+        else {
+            return null;
+        }
+
+        var segs = node.animatedPathSegList;
+        if (segs[0].pathSegType !== 2) {
+            return 0;
+        }
+        var lineLength = 1;
+        for (var i = 1; i < segs.length; ++i) {
+            /*
+            if (segs[i].pathSegType !== 4) {
+
+                return null;
+            }
+            */
+            //else {
+            lineLength++;
+            //}
+        }
+
+        if (dataArray && dataArray.length === lineLength) {
+            var schema = [];
+            schema = schema.concat(_.keys(dataArray[0]));
+            schema = schema.concat(_.keys(otherAttrs));
+            var lineData = {};
+            var lineAttrs = {};
+            var lineIDs = [];
+            var lineNodeAttrs = [];
+            var lineCount = 0;
+
+            // Set up schema info using first point
+            var dataRow = _.extend({}, dataArray[0]);
+            dataRow = _.extend(dataRow, otherAttrs);
+            dataRow['lineID'] = lineCount;
+            lineCount++;
+            _.each(schema, function(field) {
+                lineData[field] = [dataRow[field]];
+            });
+            _.each(_.keys(attrs), function(attr) {
+                lineAttrs[attr] = [attrs[attr]];
+            });
+            lineIDs.push(id);
+            lineNodeAttrs.push(nodeAttrs);
+
+
+            for (var j = 1; j < dataArray.length; ++j) {
+                var dataRow = _.extend({}, dataArray[j]);
+                dataRow = _.extend(dataRow, otherAttrs);
+                dataRow['lineID'] = lineCount;
+                lineCount++;
+                _.each(schema, function(field) {
+                    lineData[field].push(dataRow[field]);
+                });
+                _.each(_.keys(attrs), function(attr) {
+                    lineAttrs[attr].push(attrs[attr]);
+                });
+                lineIDs.push(id);
+                lineNodeAttrs.push(nodeAttrs);
+            }
+
+            _.each(segs, function(seg, ind) {
+                var svg = node.ownerSVGElement;
+                var transform = node.getTransformToElement(svg);
+                var pt = svg.createSVGPoint();
+                pt.x = seg.x;
+                pt.y = seg.y;
+                pt = pt.matrixTransform(transform);
+                lineAttrs['xPosition'][ind] = pt.x;
+                lineAttrs['yPosition'][ind] = pt.y;
+            });
+
+            return {
+                schema: schema,
+                ids: lineIDs,
+                data: lineData,
+                attrs: lineAttrs,
+                nodeAttrs: lineNodeAttrs,
+                isLine: true
+            }
+        }
+
+        return null;
+
     }
 
     /**
@@ -339,14 +486,25 @@ var VisDeconstruct = (function() {
      * @param ids
      * @param attrs
      */
-    function schematize (data, ids, attrs, nodeAttrs) {
+    function schematize (data, ids, nodeInfo) {
         var dataSchemas = [];
+        var attrs = nodeInfo.attrData;
+        var nodeAttrs = nodeInfo.nodeAttrs;
+
         for (var i = 0; i < data.length; ++i) {
+
+            var line = checkLine(data[i], nodeInfo.attrData[i], nodeInfo.nodeAttrs[i], nodeInfo.nodes[i], ids[i]);
+            if (line) {
+                dataSchemas.push(line);
+                continue;
+            }
+
             var currSchema = _.keys(data[i]);
 
             var foundSchema = false;
             for (var j = 0; j < dataSchemas.length; ++j) {
-                if (_.intersection(currSchema, dataSchemas[j].schema).length == currSchema.length) {
+                if (_.intersection(currSchema, dataSchemas[j].schema).length == currSchema.length
+                    && !dataSchemas[j].isLine) {
                     foundSchema = true;
                     dataSchemas[j].ids.push(ids[i]);
                     dataSchemas[j].nodeAttrs.push(nodeAttrs[i]);
@@ -394,6 +552,7 @@ var VisDeconstruct = (function() {
         var data = [];
         var nodes = [];
         var ids = [];
+        var lineCount = 0;
 
         /** List of tag names which generate marks in SVG and are accepted by our system. **/
         var markGeneratingTags = ["circle", "ellipse", "rect", "path", "polygon", "text", "line"];
@@ -409,6 +568,7 @@ var VisDeconstruct = (function() {
                 else if (typeof nodeData !== "object") {
                     nodeData = {string: nodeData};
                 }
+
                 nodeData.deconID = i;
                 data.push(nodeData);
                 nodes.push(node);
@@ -420,13 +580,15 @@ var VisDeconstruct = (function() {
         return {data: data, nodes: nodes, ids: ids};
     }
 
+
     /**
      * Extracts the style and positional properties for each of a list of nodes, placing each node's in
      * attributes in a Javascript object.
      * @param nodes
      * @returns {Array}
      */
-    function extractVisAttrs (nodes) {
+    function extractVisAttrs (nodeData) {
+        var nodes = nodeData.nodes;
         var visAttrData = [];
 
         for (var i = 0; i < nodes.length; ++i) {
@@ -437,6 +599,7 @@ var VisDeconstruct = (function() {
             var boundingBox = transformedBoundingBox(node);
             style.xPosition = boundingBox.x + (boundingBox.width / 2);
             style.yPosition = boundingBox.y + (boundingBox.height / 2);
+
             style.area = boundingBox.width * boundingBox.height;
             style.width = boundingBox.width;
             style.height = boundingBox.height;
@@ -506,11 +669,14 @@ var VisDeconstruct = (function() {
                     }
                     else if (fieldType[attr] === "color") {
                         rgbChannels = rgbRegex.exec(object[attr]);
+                        /*
                         object[attr] = {
                             r: parseFloat(rgbChannels[1]),
                             g: parseFloat(rgbChannels[2]),
                             b: parseFloat(rgbChannels[3])
                         }
+                        */
+                        object[attr] = "rgb(" + rgbChannels[1] + "," + rgbChannels[2] + "," + rgbChannels[3] + ")";
                     }
                 }
             }
@@ -576,9 +742,10 @@ var VisDeconstruct = (function() {
     };
 
     return {
+        deconstruct: deconstruct,
         extractNodeAttrs: extractNodeAttrs,
         extractMappings: extractMappings,
-        extractMultiLinearMapping: extractMultiLinearMapping,
+        extractMultiLinearMappings: extractMultiLinearMappings,
         schematize: schematize,
         extractData: extractData,
         extractVisAttrs: extractVisAttrs,
