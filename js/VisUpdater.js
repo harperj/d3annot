@@ -3,19 +3,22 @@
  */
 'use strict';
 
-var VisUpdater = function(svgNode, markNodes, ids, schemas) {
+var $ = require('jquery');
+var _ = require('underscore');
+var d3 = require('d3');
 
+var VisUpdater = function(svgNode, markNodes, ids, schemas) {
     var currentNodes = new Array(markNodes.length);
-    _.each(markNodes, function(markNode, ind) {
+    _.each(markNodes, function (markNode, ind) {
         currentNodes[ind] = markNode;
     });
 
     function getAttrsFromId(id) {
         var attrs = { };
-        _.each(schemas, function(schema) {
+        _.each(schemas, function (schema) {
             var ind = schema.ids.indexOf(id);
             if (ind !== -1) {
-                _.each(schema.attrs, function(val, attr) {
+                _.each(schema.attrs, function (val, attr) {
                     attrs[attr] = val[ind];
                 });
             }
@@ -25,7 +28,7 @@ var VisUpdater = function(svgNode, markNodes, ids, schemas) {
 
     function getSchemaFromId(id) {
         var schemaInd = -1;
-        _.each(schemas, function(schema, i) {
+        _.each(schemas, function (schema, i) {
             var ind = schema.ids.indexOf(id);
             if (ind !== -1) {
                 schemaInd = i;
@@ -35,7 +38,7 @@ var VisUpdater = function(svgNode, markNodes, ids, schemas) {
     }
 
     function updateNodes(nodeIds, attr, val) {
-        _.each(nodeIds, function(nodeId) {
+        _.each(nodeIds, function (nodeId) {
             if (ids.indexOf(nodeId) !== -1) {
                 updateNode(nodeId, attr, val);
             }
@@ -64,7 +67,7 @@ var VisUpdater = function(svgNode, markNodes, ids, schemas) {
         currentNode.parentNode.appendChild(newNode);
 
         var withinSchemaInd = schemas[schema].ids.indexOf(nodeId);
-        _.each(schemas[schema].nodeAttrs[withinSchemaInd], function(val, attr) {
+        _.each(schemas[schema].nodeAttrs[withinSchemaInd], function (val, attr) {
             if (attr === "text") {
                 $(newNode).text(val);
             }
@@ -73,9 +76,9 @@ var VisUpdater = function(svgNode, markNodes, ids, schemas) {
             }
         });
 
-        _.each(attrs, function(val, attr) {
+        _.each(attrs, function (val, attr) {
             if (val !== null) {
-               d3.select(newNode).style(attr, val);
+                d3.select(newNode).style(attr, val);
             }
         });
 
@@ -136,7 +139,7 @@ var VisUpdater = function(svgNode, markNodes, ids, schemas) {
         "diamond": "1,0 0,2 -1,0 0,-2"
     };
 
-    function getNewNodeFromShape (shapeName) {
+    function getNewNodeFromShape(shapeName) {
         var newNode;
 
         if (_.contains(_.keys(shapeSpecs), shapeName)) {
@@ -156,7 +159,7 @@ var VisUpdater = function(svgNode, markNodes, ids, schemas) {
         return newNode;
     }
 
-    function transformedBoundingBox (el, to) {
+    function transformedBoundingBox(el, to) {
         var bb = el.getBBox();
         var svg = el.ownerSVGElement;
         if (!to) {
@@ -196,4 +199,7 @@ var VisUpdater = function(svgNode, markNodes, ids, schemas) {
     return {
         updateNodes: updateNodes
     };
+
 };
+
+module.exports = VisUpdater;

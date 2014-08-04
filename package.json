@@ -1,0 +1,16 @@
+{
+  "browserify-shim": {
+  },
+  "browserify": {
+    "transform": [
+      "browserify-shim"
+    ]
+  },
+  "devDependencies": {
+    "grunt": "^0.4.5",
+    "grunt-browserify": "^2.1.4",
+    "grunt-contrib-concat": "~0.3.0",
+    "jquery": "~2.1.0",
+    "moment": "~2.5.1"
+  }
+}

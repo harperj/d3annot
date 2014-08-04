@@ -1,6 +1,12 @@
 "use strict";
 
-//(function () {
+var _ = require('underscore');
+var $ = require('jquery');
+var angular = require('angular');
+var Papa = require('../lib/papaparse.js');
+var d3 = require('d3');
+var VisDeconstruct = require('./VisDeconstruct.js');
+
     var restylingApp = angular.module('restylingApp', []);
 
     restylingApp.factory('chromeMessageService', function() {
@@ -710,7 +716,7 @@ var dataScope;
             },
             restrict: 'E',
             link: function(scope, element, attrs, controller) {
-                scope.$watchGroup(["schema.numNodes", "attrs"], function(newValue, oldValue) {
+                scope.$watch("attrs", function(newValue, oldValue) {
 //                    console.log(scope.schema);
 //                    console.log(scope.ind);
                     var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -801,32 +807,6 @@ var dataScope;
                     newTranslate.setTranslate(xTranslate, yTranslate);
 
                     markNode.transform.baseVal.appendItem(newTranslate);
-
-                    //var newRotate = svg.createSVGTransform();
-                    //newRotate.setRotate(+attrs['rotation'], 0, 0);
-                    //markNode.transform.baseVal.appendItem(newRotate);
-
-
-//                    var newTranslate = svg.createSVGTransform();
-//                    newTranslate.setTranslate(canvasWidth / 2, canvasWidth / 2);
-//                    var newScale = svg.createSVGTransform();
-//                    var originalWidthScale = scope.schema.attrs["width"][scope.ind] /
-//                        transformedBoundingBox(markNode).width;
-//                    var originalHeightScale = scope.schema.attrs["height"][scope.ind] /
-//                        transformedBoundingBox(markNode).height;
-//
-//                    if (isNaN(originalWidthScale)) {
-//                        originalWidthScale = 1;
-//                    }
-//                    if (isNaN(originalHeightScale)) {
-//                        originalHeightScale = 1;
-//                    }
-//
-//                    newScale.setScale(originalWidthScale * ((canvasWidth-2) / scaleDimVal),
-//                            originalHeightScale * (canvasWidth-2) / scaleDimVal);
-//                    markNode.transform.baseVal.appendItem(newScale);
-//                    markNode.transform.baseVal.appendItem(newTranslate);
-
                 });
             }
         }
