@@ -4,11 +4,11 @@
 }
 
 div.panel div.linear {
-    background-color: #7fc97f;
+    background-color: #beaed4;
 }
 
 div.panel div.nominal {
-    background-color: #beaed4;
+    background-color: #7fc97f;
 }
 
 body.ng-scope {
@@ -158,8 +158,12 @@ ul.dropdown-menu {
     line-height: 1;
 }
 
+.dropdown-menu li a.mappedAttrLink {
+    color: red;
+}
+
 #wrapper {
-    padding-right: 180px;
+    padding-right: 100px;
     transition: all 0.4s ease 0s;
 }
 

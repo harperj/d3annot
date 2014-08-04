@@ -1,30 +1,33 @@
-<div ng-controller="DataTableController" id="wrapper">
-
-    <div class="page-content-wrapper">
-        <div class="page-content">
-            <div class="dataContainer" ng-repeat="schema in data | orderBy:numNodes:true">
-                <button ng-click="selectSchema(schema)">Select</button>
-                <h3 class="sectionHeader">Data Table {{$index+1}}</h3>
-                <table class="table dataTable" ng-right-click="splitSchema()">
-                    <thead ng-click="">
-                    <tr class="headerRow">
-                        <th>Mark</th>
-                        <th>deconID</th>
-                        {{_.keys(schema.data)}}
-                        <th ng-repeat="(dataField, dataValues) in schema.data" ng-if="dataField !== 'deconID'">
-                            {{dataField}}
-                        </th>
-                    </tr>
-                    </thead>
-                    <tr ng-repeat="row in getNumber(schema.ids.length) track by $index" ng-click="selectRow(schema, $index)"
-                        ng-class="{selectedRow: rowIsSelected(schema, $index)}">
-                        <td><svg-inject ind="$index" schema="schema"></svg-inject></td>
-                        <td>{{schema.data['deconID'][$index]}}</td>
-                        <td ng-repeat="(dataField, dataValues) in schema.data" ng-if="dataField != 'deconID'">{{dataValues[$parent.$parent.$index]}}</td>
-                    </tr>
-                </table>
-            </div>
-        </div>
+<div ng-controller="DataTableController">
+    <div>
+        <form>
+            <label>
+                File name:
+                <input ng-model="saveFilename" type="text" name="filename" />
+            </label>
+            <button ng-click="saveData()">Save</button>
+        </form>
     </div>
 
+    <div class="dataContainer" ng-repeat="schema in data | orderBy:'numNodes':true">
+        <button ng-click="selectSchema(schema)">Select</button>
+        <h3 class="sectionHeader">Data Table {{$index+1}}</h3>
+        <table class="table dataTable" ng-right-click="splitSchema()">
+            <thead ng-click="">
+            <tr class="headerRow">
+                <th ng-if="hasMarks(schema)">Mark</th>
+                <th ng-if="hasMarks(schema)">deconID</th>
+                <th ng-repeat="(dataField, dataValues) in schema.data" ng-if="dataField !== 'deconID'">
+                    {{dataField}}
+                </th>
+            </tr>
+            </thead>
+            <tr ng-repeat="row in getNumber(getSchemaSize(schema)) track by $index" ng-click="selectRow(schema, $index)"
+                ng-class="{selectedRow: rowIsSelected(schema, $index)}">
+                <td ng-if="hasMarks(schema)"><svg-inject ind="$index" schema="schema"></svg-inject></td>
+                <td ng-if="hasMarks(schema)">{{schema.data['deconID'][$index]}}</td>
+                <td ng-repeat="(dataField, dataValues) in schema.data" ng-if="dataField != 'deconID'">{{dataValues[$parent.$parent.$index]}}</td>
+            </tr>
+        </table>
+    </div>
 </div>

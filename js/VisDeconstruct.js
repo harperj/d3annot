@@ -398,6 +398,9 @@ var VisDeconstruct = (function() {
         }
 
         var segs = node.animatedPathSegList;
+        if (segs.length === 0) {
+            return 0;
+        }
         if (segs[0].pathSegType !== 2) {
             return 0;
         }
@@ -418,38 +421,19 @@ var VisDeconstruct = (function() {
             var schema = [];
             schema = schema.concat(_.keys(dataArray[0]));
             schema = schema.concat(_.keys(otherAttrs));
-            var lineData = {};
-            var lineAttrs = {};
+            var lineData = [];
+            var lineAttrs = [];
             var lineIDs = [];
             var lineNodeAttrs = [];
             var lineCount = 0;
 
-            // Set up schema info using first point
-            var dataRow = _.extend({}, dataArray[0]);
-            dataRow = _.extend(dataRow, otherAttrs);
-            dataRow['lineID'] = lineCount;
-            lineCount++;
-            _.each(schema, function(field) {
-                lineData[field] = [dataRow[field]];
-            });
-            _.each(_.keys(attrs), function(attr) {
-                lineAttrs[attr] = [attrs[attr]];
-            });
-            lineIDs.push(id);
-            lineNodeAttrs.push(nodeAttrs);
-
-
-            for (var j = 1; j < dataArray.length; ++j) {
+            for (var j = 0; j < dataArray.length; ++j) {
                 var dataRow = _.extend({}, dataArray[j]);
                 dataRow = _.extend(dataRow, otherAttrs);
                 dataRow['lineID'] = lineCount;
                 lineCount++;
-                _.each(schema, function(field) {
-                    lineData[field].push(dataRow[field]);
-                });
-                _.each(_.keys(attrs), function(attr) {
-                    lineAttrs[attr].push(attrs[attr]);
-                });
+                lineData[j] = dataRow;
+                lineAttrs[j] = attrs;
                 lineIDs.push(id);
                 lineNodeAttrs.push(nodeAttrs);
             }
@@ -461,8 +445,8 @@ var VisDeconstruct = (function() {
                 pt.x = seg.x;
                 pt.y = seg.y;
                 pt = pt.matrixTransform(transform);
-                lineAttrs['xPosition'][ind] = pt.x;
-                lineAttrs['yPosition'][ind] = pt.y;
+                lineAttrs[ind]['xPosition'] = pt.x;
+                lineAttrs[ind]['yPosition'] = pt.y;
             });
 
             return {
@@ -493,9 +477,16 @@ var VisDeconstruct = (function() {
 
         for (var i = 0; i < data.length; ++i) {
 
-            var line = checkLine(data[i], nodeInfo.attrData[i], nodeInfo.nodeAttrs[i], nodeInfo.nodes[i], ids[i]);
+            var line = checkLine(data[i], nodeInfo.attrData[i],
+                nodeInfo.nodeAttrs[i], nodeInfo.nodes[i], ids[i]);
             if (line) {
-                dataSchemas.push(line);
+                Array.prototype.push.apply(data, line.data);
+                Array.prototype.push.apply(ids, line.ids);
+                Array.prototype.push.apply(nodeInfo.attrData, line.attrs);
+                Array.prototype.push.apply(nodeInfo.nodeAttrs, line.nodeAttrs);
+                _.each(line.ids, function(id, ind) {
+                    nodeInfo.nodes.push(nodeInfo.nodes[ind]);
+                });
                 continue;
             }
 
@@ -503,8 +494,9 @@ var VisDeconstruct = (function() {
 
             var foundSchema = false;
             for (var j = 0; j < dataSchemas.length; ++j) {
-                if (_.intersection(currSchema, dataSchemas[j].schema).length == currSchema.length
-                    && !dataSchemas[j].isLine) {
+                if (_.intersection(currSchema,dataSchemas[j].schema).length == currSchema.length
+                    && !dataSchemas[j].isLine
+                    && dataSchemas[j].nodeType === nodeInfo.attrData[i]['shape']) {
                     foundSchema = true;
                     dataSchemas[j].ids.push(ids[i]);
                     dataSchemas[j].nodeAttrs.push(nodeAttrs[i]);
@@ -522,6 +514,7 @@ var VisDeconstruct = (function() {
             if (!foundSchema) {
                 var newSchema = {
                     schema: currSchema,
+                    nodeType: nodeInfo.attrData[i]['shape'],
                     ids: [ids[i]],
                     data: {},
                     attrs: {},
@@ -559,14 +552,17 @@ var VisDeconstruct = (function() {
 
         for (var i = 0; i < svgChildren.length; ++i) {
             var node = svgChildren[i];
-            if (node.__data__ && _.contains(markGeneratingTags, node.tagName.toLowerCase())) {
+            if (node.__data__ !== undefined
+                && _.contains(markGeneratingTags, node.tagName.toLowerCase())) {
                 var nodeData = node.__data__;
-
-                if (typeof nodeData === "number") {
-                    nodeData = {number: nodeData};
+                if (typeof nodeData === "object") {
+                    nodeData = $.extend({}, node.__data__);
                 }
-                else if (typeof nodeData !== "object") {
-                    nodeData = {string: nodeData};
+                else if (typeof nodeData === "number") {
+                    nodeData = {number: node.__data__};
+                }
+                else {
+                    nodeData = {string: node.__data__};
                 }
 
                 nodeData.deconID = i;
@@ -603,6 +599,8 @@ var VisDeconstruct = (function() {
             style.area = boundingBox.width * boundingBox.height;
             style.width = boundingBox.width;
             style.height = boundingBox.height;
+
+            style.rotation = 0;
 
             visAttrData.push(style);
         }
@@ -701,7 +699,24 @@ var VisDeconstruct = (function() {
         }
 
         styleObject["vector-effect"] = "non-scaling-stroke";
-        return styleObject;
+
+        var filterAttrs = [
+            "stroke",
+            "fill",
+            "font-family",
+            "font-size",
+            "stroke-width",
+            "opacity",
+            "fill-opacity"
+        ];
+        var filteredStyleObject = {};
+        _.each(styleObject, function(val, key) {
+            if (_.contains(filterAttrs, key)) {
+                filteredStyleObject[key] = val;
+            }
+        });
+
+        return filteredStyleObject;
     }
 
     var transformedBoundingBox = function (el, to) {

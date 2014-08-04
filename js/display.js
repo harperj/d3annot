@@ -1,6 +1,6 @@
 "use strict";
 
-(function () {
+//(function () {
     var restylingApp = angular.module('restylingApp', []);
 
     restylingApp.factory('chromeMessageService', function() {
@@ -45,10 +45,13 @@
             $scope.selectedRows = [];
 
             // Load data from the visualization as it arrives
-            function setupMessageServiceData (data) {
+            function setupMessageServiceData (dataObj) {
+                var ids = dataObj.ids;
+                var data = dataObj.schematized;
                 _.each(data, function(schema, i) {
                     data[i].numNodes = schema.ids.length;
                 });
+                $scope.ids = ids;
                 $scope.data = data;
                 $scope.$apply();
             }
@@ -61,17 +64,79 @@
                 console.log($scope.selectedSchema);
             };
 
-            $scope.doUpdate = function(message) {
-                chromeMessageService.sendMessage(message);
+            $scope.doUpdate = function(updateMessage, schema) {
+                var val = updateMessage.val;
+                var attr = updateMessage.attr;
+                _.each(updateMessage.ids, function(id, ind) {
+                    schema.attrs[attr][ind] = val;
+
+                    if (attr === "area") {
+                        schema.attrs["width"] = Math.sqrt(replaceVal);
+                    }
+                    else if (attr === "width" || attr === "height") {
+                        schema.attrs["area"] = schema.attrs["width"][ind]
+                            * schema.attrs["height"][ind];
+                    }
+                });
+
+                chromeMessageService.sendMessage(updateMessage);
             };
 
             $scope.getNumber = function(number) {
                 return new Array(number);
-            }
+            };
+
+            $scope.updateDataWithLinearMapping = function(mapping, schemaInd) {
+                // update the attribute values according to the new mapping
+                var attrArray = $scope.data[schemaInd].attrs[mapping.attr];
+                var schema = $scope.data[schemaInd];
+                _.each(attrArray, function(attrVal, ind) {
+
+                    var newAttrVal = 0;
+                    _.each(mapping.params.coeffs, function(coeff, coeffInd) {
+//                    if (coeffInd === changedInd) {
+//                        mapping.params.coeffs[changedInd] = newVal;
+//                        coeff = newVal;
+//                    }
+                        if (coeffInd < mapping.data.length) {
+                            newAttrVal += coeff * schema.data[mapping.data[coeffInd]][ind];
+                            console.log(coeff * schema.data[mapping.data[coeffInd]][ind] + "+");
+                        }
+                        else {
+                            console.log(coeff);
+                            newAttrVal += coeff;
+                        }
+                    });
+
+                    attrArray[ind] = newAttrVal;
+                    var message = {
+                        type: "update",
+                        attr: mapping.attr,
+                        val: newAttrVal,
+                        ids: [$scope.data[schemaInd].ids[ind]]
+                    };
+                    $scope.doUpdate(message, $scope.data[schemaInd]);
+                });
+            };
+
 
         }]);
 
     restylingApp.controller('DataTableController', ['$scope', 'orderByFilter', function($scope, orderByFilter) {
+        $scope.saveFilename = "";
+
+        $scope.getSchemaSize = function(schema) {
+            var dataField = _.keys(schema.data)[0];
+            return schema.data[dataField].length;
+        };
+
+        $scope.hasMarks = function(schema) {
+            return schema.attrs !== null;
+        };
+
+        $scope.saveData = function() {
+            saveAs(new Blob([JSON.stringify($scope.data)]), $scope.saveFilename);
+        };
 
         $scope.findSchemaById = function(id) {
             var schemaInd;
@@ -160,7 +225,7 @@
                 $scope.data.push(newSchema);
                 $scope.selectedRows = [];
             }
-        }
+        };
     }]);
 
 
@@ -195,9 +260,6 @@
                 replaceVal = mapping.params.attrMin;
             }
 
-            // remove mapping
-            schema.mappings.splice(mappingInd, 1);
-
             // update vals accordingly
             var message = {
                 type: "update",
@@ -205,7 +267,8 @@
                 val: replaceVal,
                 ids: schema.ids
             };
-            $scope.doUpdate(message);
+            $scope.doUpdate(message, schema);
+            schema.mappings = VisDeconstruct.extractMappings(schema);
 
         };
 
@@ -248,7 +311,7 @@
                     val: newVal,
                     ids: ids
                 };
-                $scope.doUpdate(message);
+                $scope.doUpdate(message, $scope.data[mappingSchemaInd]);
             }
         };
 
@@ -261,6 +324,7 @@
 
             var mappingSchemaInd = -1;
 
+            // Update the mapping
             _.each($scope.data, function(schema, schemaInd) {
                 var mappingInd = schema.mappings.indexOf(mapping);
                 if (mappingInd !== -1) {
@@ -271,58 +335,49 @@
                 }
             });
 
-            var attrArray = $scope.data[mappingSchemaInd].attrs[mapping.attr];
-            var schema = $scope.data[mappingSchemaInd];
-            _.each(attrArray, function(attrVal, ind) {
+            mapping.params.coeffs[changedInd] = newVal;
 
-                var newAttrVal = 0;
-                _.each(mapping.params.coeffs, function(coeff, coeffInd) {
-                    if (coeffInd === changedInd) {
-                        mapping.params.coeffs[changedInd] = newVal;
-                        coeff = newVal;
-                    }
-                    if (coeffInd < mapping.data.length) {
-                        newAttrVal += coeff * schema.data[mapping.data[coeffInd]][ind];
-                        console.log(coeff * schema.data[mapping.data[coeffInd]][ind] + "+");
-                    }
-                    else {
-                        console.log(coeff);
-                        newAttrVal += coeff;
-                    }
-                });
-
-                attrArray[ind] = newAttrVal;
-                var message = {
-                    type: "update",
-                    attr: mapping.attr,
-                    val: newAttrVal,
-                    ids: [$scope.data[mappingSchemaInd].ids[ind]]
-                };
-                $scope.doUpdate(message);
-            });
-
+            $scope.updateDataWithLinearMapping(mapping, mappingSchemaInd);
         };
     }]);
 
     restylingApp.controller('AddMappingsController', ['$scope', function($scope) {
-        $scope.dataFieldSelected = "";
+        $scope.dataFieldsSelected = [];
         $scope.attrSelected = "";
+        $scope.newNominalMappingData = {};
+        $scope.newLinearMappingData = [];
 
         $scope.linearMappingAvailable = function() {
             var schema = $scope.data[$scope.selectedSchema];
-            if (typeof schema.attrs[$scope.attrSelected][0] !== "number"
-                || typeof schema.data[$scope.dataFieldSelected][0] !== "number") {
-                return false;
+            //console.log($scope.dataFieldsSelected);
+            //console.log($scope.attrSelected);
+            if (!$scope.attrSelected && $scope.dataFieldsSelected.length === 0) {
+                return true;
             }
-            return true;
+            else if ($scope.attrSelected
+                && typeof schema.attrs[$scope.attrSelected][0] === "number"
+                && $scope.dataFieldsSelected.length === 0) {
+                return true;
+            }
+            else if (!$scope.attrSelected
+                && $scope.dataFieldsSelected.length > 0
+                && typeof schema.data[$scope.dataFieldsSelected[0]][0] === "number") {
+                return true;
+            }
+            else if ($scope.attrSelected
+                && $scope.dataFieldsSelected.length > 0
+                && typeof schema.attrs[$scope.attrSelected][0] === "number"
+                && typeof schema.data[$scope.dataFieldsSelected[0]][0] === "number") {
+                return true;
+            }
+            return false;
         };
 
         $scope.isMapped = function(attr) {
             var schema = $scope.data[$scope.selectedSchema];
-            var foundMapping = _.find(schema.mappings, function(mapping) {
+            return _.find(schema.mappings, function(mapping) {
                 return mapping.attr == attr;
-            });
-            return foundMapping;
+            }) !== undefined;
         };
 
         $scope.uniqVals = function(schemaInd, fieldName, isAttr) {
@@ -354,10 +409,248 @@
                     val: newAttrVal,
                     ids: ids
                 };
-                $scope.doUpdate(message);
+                $scope.doUpdate(message, schema);
             }
         };
 
+         $scope.getRemainingFields = function() {
+            return _.without($scope.data[$scope.selectedSchema].schema, $scope.dataFieldsSelected);
+        };
+
+        $scope.showAddNominalMappingDialog = function() {
+            return $scope.action === 'nominal'
+                && $scope.dataFieldsSelected.length === 1
+                && $scope.attrSelected;
+        };
+
+        $scope.removeDataField = function(ind) {
+            $scope.dataFieldsSelected.splice(ind, 1);
+        };
+
+        $scope.showAddLinearMappingDialog = function() {
+            return $scope.action === 'linear'
+                && $scope.dataFieldsSelected.length > 0
+                && $scope.attrSelected;
+        };
+
+        $scope.showChangeAttrDialog = function() {
+            return $scope.dataFieldsSelected.length === 0
+                && $scope.attrSelected;
+        };
+
+        $scope.allowMappingSelect = function(mappingType) {
+            if (mappingType === 'linear') {
+                if ($scope.linearMappingAvailable()) {
+                    return true;
+                }
+            }
+            else if (mappingType === 'nominal') {
+                return true;
+            }
+            return false;
+        };
+
+        $scope.allowAddField = function() {
+            return $scope.dataFieldsSelected.length === 0
+                || ($scope.action === 'linear'
+                &&  $scope.dataFieldsSelected.length < $scope.data[$scope.selectedSchema].schema.length);
+        };
+
+        $scope.selectMappingType = function(mappingType) {
+            if (mappingType === 'linear') {
+                $scope.action = 'linear';
+                $scope.setupNewLinearMapping();
+            }
+            else if (mappingType === 'nominal') {
+                $scope.action = 'nominal';
+                $scope.setupNewNominalMapping();
+            }
+        };
+
+        $scope.setupNewLinearMapping = function() {
+            console.log("Setting up new linear mapping");
+            console.log($scope.dataFieldsSelected);
+            $scope.newLinearMappingData =
+                Array.apply(null, new Array($scope.dataFieldsSelected.length+1))
+                .map(Number.prototype.valueOf,0);
+        };
+
+        $scope.setupNewNominalMapping = function() {
+            $scope.newNominalMappingData = {};
+        };
+
+        $scope.addNominalMapping = function($event) {
+            if ($event.keyCode === 13) {
+                var schema = $scope.data[$scope.selectedSchema];
+                var dataField = $scope.dataFieldsSelected[0];
+                var markAttr = $scope.attrSelected;
+                var nominalMap = $scope.newNominalMappingData;
+
+                console.log(nominalMap);
+
+                _.each(_.keys(nominalMap), function(keyVal) {
+                    var keyInds = [];
+                    var keyIds = [];
+                    _.each(schema.data[dataField], function(val, valInd) {
+                        if (val.toString() === keyVal) {
+                            keyInds.push(valInd);
+                            keyIds.push(schema.ids[valInd]);
+                        }
+                    });
+
+                    var message = {
+                        type: "update",
+                        attr: markAttr,
+                        val: nominalMap[keyVal],
+                        ids: keyIds
+                    };
+                    $scope.doUpdate(message, schema);
+                });
+
+                // Now add the mapping to the schema
+                var mapping = {
+                    data: dataField,
+                    attr: markAttr,
+                    type: "nominal",
+                    params: nominalMap
+                };
+                schema.mappings.push(mapping);
+            }
+        };
+
+        $scope.addLinearMapping = function($event) {
+            if ($event.keyCode === 13) {
+                console.log($scope.newLinearMappingData);
+                var schema = $scope.data[$scope.selectedSchema];
+                var dataFields = $scope.dataFieldsSelected;
+                var markAttr = $scope.attrSelected;
+                var coeffs = $scope.newLinearMappingData;
+                _.each(coeffs, function(coeff, ind) {
+                    coeffs[ind] = +coeffs[ind];
+                });
+
+                var attrMin = Number.MAX_VALUE;
+                _.each(schema.ids, function(id, ind) {
+                    var attrVal = 0;
+                    _.each(dataFields, function(dataField, dataFieldInd) {
+                        attrVal += schema.data[dataField][ind] * coeffs[dataFieldInd];
+                    });
+                    // Finally add the constant
+                    attrVal += coeffs[coeffs.length-1];
+                    if (attrVal < attrMin) {
+                        attrMin = attrVal;
+                    }
+                });
+
+                var mapping = {
+                    type: 'linear',
+                    data: $scope.dataFieldsSelected,
+                    attr: $scope.attrSelected,
+                    params: {
+                        attrMin: attrMin,
+                        coeffs: $scope.newLinearMappingData
+                    }
+                };
+                $scope.data[$scope.selectedSchema].mappings.push(mapping);
+                $scope.updateDataWithLinearMapping(mapping, $scope.selectedSchema);
+                //schema.mappings = VisDeconstruct.extractMappings(schema);
+            }
+        };
+
+        $scope.addDataField = function(dataField, ind) {
+            console.log(dataField);
+            console.log(ind);
+            if ($scope.dataFieldsSelected.length === ind) {
+                $scope.dataFieldsSelected.push(dataField);
+            }
+            else {
+                $scope.dataFieldsSelected[ind] = dataField;
+            }
+
+            if ($scope.action === "linear") {
+                $scope.setupNewLinearMapping();
+            }
+        };
+
+        $scope.attrSelectable = function(attr) {
+            return !($scope.action === "linear" &&
+                typeof $scope.data[$scope.selectedSchema].attrs[attr][0] !== "number");
+        };
+
+    }]);
+
+var dataScope;
+    restylingApp.controller('AddTableController', ['$scope', function($scope) {
+        dataScope = $scope;
+
+        $scope.createMarks = function(schemaID) {
+
+        };
+
+        $scope.addCSVDataTable = function() {
+            if (!$scope.loadedSchemaData) {
+                return false;
+            }
+
+            var newSchemaData = _.extend({}, $scope.loadedSchemaData);
+
+            var newSchema = {
+                data: newSchemaData,
+                attrs: null,
+                ids: null,
+                nodeAttrs: null,
+                schema: _.keys(newSchemaData)
+            };
+
+            $scope.data.push(newSchema);
+            console.log(newSchema);
+        };
+
+        $scope.leftOuterJoinCSV = function(key) {
+            if (!$scope.loadedSchemaData) {
+                return false;
+            }
+
+            var leftData = $scope.data[$scope.selectedSchema].data;
+            var rightData = $scope.loadedSchemaData;
+            var leftLength = leftData[_.keys(leftData)[0]].length;
+            var rightLength = $scope.loadedSchemaDataLength;
+
+            for (var row = 0; row < leftLength; ++row) {
+                var foundMatchingKey = false;
+                for (var rightRow = 0; rightRow < rightLength; ++rightRow) {
+                    if (leftData[key][row] === rightData[key][rightRow]) {
+                        foundMatchingKey = true;
+                        _.each(_.keys(rightData), function(dataField) {
+                            if (dataField !== key) {
+                                if (leftData[dataField]) {
+                                    leftData[dataField].push(rightData[dataField][rightRow]);
+                                }
+                                else {
+                                    leftData[dataField] = [rightData[dataField][rightRow]];
+                                }
+                            }
+                        });
+                        break;
+                    }
+                }
+
+                if (!foundMatchingKey) {
+                    _.each(_.keys(rightData), function(dataField) {
+                        if (dataField !== key) {
+                            if (leftData[dataField]) {
+                                leftData[dataField].push(null);
+                            }
+                            else {
+                                leftData[dataField] = [null];
+                            }
+                        }
+                    });
+                }
+            }
+            console.log(leftData);
+            $scope.data[$scope.selectedSchema].schema = _.keys(leftData);
+        };
     }]);
 
     restylingApp.directive('ngRightClick', function($parse) {
@@ -372,6 +665,43 @@
         };
     });
 
+    restylingApp.directive('fileUpload', [function() {
+        return {
+            scope: {
+                fileUpload: "="
+            },
+            link: function(scope, element, attrs) {
+                element.bind("change", function (event) {
+                    var schemaData = {};
+                    var schemaDataLength = 0;
+                    Papa.parse(event.target.files[0], {
+                        dynamicTyping: true,
+                        complete: function (csv) {
+                            console.log(csv);
+                            schemaDataLength = csv.data.length;
+                            for (var i = 1; i < csv.data.length; ++i) {
+                                for (var j = 0; j < csv.data[0].length; ++j) {
+                                    var key = csv.data[0][j];
+                                    if (schemaData[key]) {
+                                        schemaData[key].push(csv.data[i][j]);
+                                    }
+                                    else {
+                                        schemaData[key] = [csv.data[i][j]];
+                                    }
+                                }
+                            }
+                            console.log(schemaData);
+                            scope.$apply(function() {
+                                scope.$parent.loadedSchemaData = schemaData;
+                                scope.$parent.loadedSchemaDataLength = schemaDataLength;
+                            });
+                        }
+                    });
+                });
+            }
+        }
+    }]);
+
     restylingApp.directive('svgInject', function($compile) {
         return {
             scope: {
@@ -380,7 +710,7 @@
             },
             restrict: 'E',
             link: function(scope, element, attrs, controller) {
-                scope.$watch("schema.numNodes", function(newValue, oldValue) {
+                scope.$watchGroup(["schema.numNodes", "attrs"], function(newValue, oldValue) {
 //                    console.log(scope.schema);
 //                    console.log(scope.ind);
                     var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -400,6 +730,7 @@
                     if (maxWidth > maxHeight) {
                         scaleDimVal = maxWidth;
                     }
+                    scaleDimVal = canvasWidth / scaleDimVal;
 
                     var markNode = document.createElementNS("http://www.w3.org/2000/svg", scope.schema.attrs["shape"][scope.ind]);
 
@@ -438,25 +769,63 @@
                     svg.appendChild(markNode);
                     element[0].appendChild(svg);
 
-                    var newTranslate = svg.createSVGTransform();
-                    newTranslate.setTranslate(canvasWidth / 2, canvasWidth / 2);
+                    var newNodeBoundingBox = transformedBoundingBox(markNode);
                     var newScale = svg.createSVGTransform();
-                    var originalWidthScale = scope.schema.attrs["width"][scope.ind] /
-                        transformedBoundingBox(markNode).width;
-                    var originalHeightScale = scope.schema.attrs["height"][scope.ind] /
-                        transformedBoundingBox(markNode).height;
-
-                    if (isNaN(originalWidthScale)) {
-                        originalWidthScale = 1;
+                    var widthScale = attrs['width'] / newNodeBoundingBox.width;
+                    var heightScale = attrs['height'] / newNodeBoundingBox.height;
+                    if (isNaN(widthScale)) {
+                        widthScale = 1;
                     }
-                    if (isNaN(originalHeightScale)) {
-                        originalHeightScale = 1;
+                    if (isNaN(heightScale)) {
+                        heightScale = 1;
                     }
-
-                    newScale.setScale(originalWidthScale * ((canvasWidth-2) / scaleDimVal),
-                            originalHeightScale * (canvasWidth-2) / scaleDimVal);
-                    markNode.transform.baseVal.appendItem(newTranslate);
+                    newScale.setScale(widthScale * scaleDimVal, heightScale * scaleDimVal);
                     markNode.transform.baseVal.appendItem(newScale);
+                    newNodeBoundingBox = transformedBoundingBox(markNode);
+                    var newTranslate = svg.createSVGTransform();
+                    var globalTransform = markNode.getTransformToElement(svg);
+                    var globalToLocal = globalTransform.inverse();
+                    var newNodeCurrentGlobalPt = svg.createSVGPoint();
+                    newNodeCurrentGlobalPt.x = newNodeBoundingBox.x + (newNodeBoundingBox.width / 2);
+                    newNodeCurrentGlobalPt.y = newNodeBoundingBox.y + (newNodeBoundingBox.height / 2);
+
+                    var newNodeDestinationGlobalPt = svg.createSVGPoint();
+                    newNodeDestinationGlobalPt.x = canvasWidth / 2;
+                    newNodeDestinationGlobalPt.y = canvasWidth / 2;
+
+                    var localCurrentPt = newNodeCurrentGlobalPt.matrixTransform(globalToLocal);
+                    var localDestinationPt = newNodeDestinationGlobalPt.matrixTransform(globalToLocal);
+
+                    var xTranslate = localDestinationPt.x - localCurrentPt.x;
+                    var yTranslate = localDestinationPt.y - localCurrentPt.y;
+                    newTranslate.setTranslate(xTranslate, yTranslate);
+
+                    markNode.transform.baseVal.appendItem(newTranslate);
+
+                    //var newRotate = svg.createSVGTransform();
+                    //newRotate.setRotate(+attrs['rotation'], 0, 0);
+                    //markNode.transform.baseVal.appendItem(newRotate);
+
+
+//                    var newTranslate = svg.createSVGTransform();
+//                    newTranslate.setTranslate(canvasWidth / 2, canvasWidth / 2);
+//                    var newScale = svg.createSVGTransform();
+//                    var originalWidthScale = scope.schema.attrs["width"][scope.ind] /
+//                        transformedBoundingBox(markNode).width;
+//                    var originalHeightScale = scope.schema.attrs["height"][scope.ind] /
+//                        transformedBoundingBox(markNode).height;
+//
+//                    if (isNaN(originalWidthScale)) {
+//                        originalWidthScale = 1;
+//                    }
+//                    if (isNaN(originalHeightScale)) {
+//                        originalHeightScale = 1;
+//                    }
+//
+//                    newScale.setScale(originalWidthScale * ((canvasWidth-2) / scaleDimVal),
+//                            originalHeightScale * (canvasWidth-2) / scaleDimVal);
+//                    markNode.transform.baseVal.appendItem(newScale);
+//                    markNode.transform.baseVal.appendItem(newTranslate);
 
                 });
             }
@@ -502,4 +871,4 @@
         bb.height = yMax - yMin;
         return bb;
     };
-})();
+//})();

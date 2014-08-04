@@ -1,0 +1,39 @@
+<div ng-controller="AddTableController" id="addData">
+    <form>
+        <h3>Add Data</h3>
+        <label>
+            Choose file:
+            <input type="file" file-upload id="fileUploader">
+            <button ng-click="addCSVDataTable()">Submit</button>
+        </label>
+        <!--<div class="dataContainer" ng-if="loadedSchemaData">-->
+            <!--<h3>Loaded schema data:</h3>-->
+            <!--<table class="table dataTable">-->
+                <!--<thead ng-click="">-->
+                <!--<tr class="headerRow">-->
+                    <!--<th ng-repeat="(dataField, dataValues) in loadedSchemaData">-->
+                        <!--{{dataField}}-->
+                    <!--</th>-->
+                <!--</tr>-->
+                <!--</thead>-->
+                <!--<tr ng-repeat="row in getNumber(loadedSchemaDataLength) track by $index">-->
+                    <!--<td ng-repeat="(dataField, dataValues) in loadedSchemaData">{{dataValues[$parent.$index]}}</td>-->
+                <!--</tr>-->
+            <!--</table>-->
+            <!--<br />-->
+
+            <!--Create marks from new data using selected schema attributes and mappings.-->
+
+            <!--<div ng-repeat="mapping in data[selectedSchema].mappings">-->
+                <!--<span ng-repeat="datum in mapping.data">{{datum}}<span ng-if="!$last">,</span> </span> &#10141; {{mapping.attr}}-->
+                <!--<div ng-if="mapping.type === 'linear'">-->
+                    <!--Choose new data field:-->
+                    <!--<button type="button" class="btn btn-default dropdown-toggle deconButton">-->
+                        <!--<span class="attrSelector">{{action}}</span>-->
+                        <!--<span class="caret"></span>-->
+                    <!--</button>-->
+                <!--</div>-->
+            <!--</div>-->
+        <!--</div>-->
+    </form>
+</div>

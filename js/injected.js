@@ -29,9 +29,14 @@
 
         console.log(deconstructed.schematizedData);
 
+        var deconData = {
+            schematized: deconstructed.schematizedData,
+            ids: deconstructed.dataNodes.ids
+        };
+
         // Now send a custom event with dataNodes to the content script
         var evt = document.createEvent("CustomEvent");
-        evt.initCustomEvent("deconDataEvent", true, true, deconstructed.schematizedData);
+        evt.initCustomEvent("deconDataEvent", true, true, deconData);
         document.dispatchEvent(evt);
     }
 

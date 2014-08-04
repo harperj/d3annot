@@ -9,7 +9,7 @@
         {
             "matches": ["file:///*/*", "http://*/*", "https://*/*"],
             "css": ["content.css"],
-            "js": ["lib/underscore.js", "lib/d3.js", "lib/jquery.js", "js/content.js"]
+            "js": ["lib/underscore.js", "lib/d3.js", "lib/jquery.js", "js/content.js", "lib/FileSaver.js"]
         }
     ],
 

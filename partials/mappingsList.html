@@ -52,7 +52,7 @@
                     </tr>
                     <tr ng-repeat="coeff in mapping.params.coeffs">
                         <td>
-                            <span ng-if="$index !== mapping.data.length">({{mapping.data[$index]}}) * </span>
+                            <span ng-if="$index !== mapping.data.length">{{mapping.data[$index]}}&nbsp;*</span>
                         </td>
                         <td>
                             <input class="form-control" value="{{coeff}}"

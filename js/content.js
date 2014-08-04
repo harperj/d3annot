@@ -16,7 +16,6 @@
             }
             else if (req.type == "pageActionClicked") {
                 // User clicked the page action, so we inject the main plugin script
-                deconSetup();
                 document.addEventListener('deconDataEvent', function(event) {
                     initRestylingInterface(event.detail);
                 });
@@ -25,6 +24,7 @@
     }
 
     function initRestylingInterface(visData) {
+        //saveAs(new Blob([JSON.stringify(visData)]), "deconOutput.json");
         chrome.runtime.sendMessage({type: "initRestyling"}, function() {
             chrome.runtime.sendMessage({type: "restylingData", data: visData});
         });
@@ -38,8 +38,8 @@
     }
 
     function restylingPortHandler(message) {
-        console.log(message);
         if (message.type === "update") {
+            console.log(message);
             var evt = document.createEvent("CustomEvent");
             evt.initCustomEvent("updateEvent", true, true, message);
             document.dispatchEvent(evt);
@@ -77,4 +77,6 @@
         console.log("injecting d3 checker");
         injectJS(chrome.extension.getURL('js/d3check.js'));
     }
+
+    deconSetup();
 })();
