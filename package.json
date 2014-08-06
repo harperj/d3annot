@@ -1,5 +1,8 @@
 {
   "browserify-shim": {
+      "lib/angular.js": {
+          "exports": "angular"
+      }
   },
   "browserify": {
     "transform": [

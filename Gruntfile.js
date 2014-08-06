@@ -1,19 +1,18 @@
 module.exports = function(grunt) {
     grunt.initConfig({
         browserify: {
-            injected: {
-                src: ['js/injected.js'],
-                dest: 'build/injected.js',
+            options: {
                 bundleOptions: {
                     debug: true
                 }
             },
+            injected: {
+                src: ['js/injected.js'],
+                dest: 'build/injected.js'
+            },
             restyling: {
                 src: ['js/restyling.js'],
-                dest: 'build/restyling.js',
-                bundleOptions: {
-                    debug: true
-                }
+                dest: 'build/restyling.js'
             }
         }
     });
