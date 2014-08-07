@@ -4,6 +4,7 @@ var restylingApp = angular.module('restylingApp', []);
 
 require('./services');
 require('./directives');
+require('./models/SchemaModel');
 require('./controllers/RestylingAppController');
 require('./controllers/AddMappingsController');
 require('./controllers/AddTableController');

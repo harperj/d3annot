@@ -3,28 +3,28 @@ var angular = require('../../lib/angular');
 
 var restylingApp = angular.module('restylingApp');
 
-restylingApp.controller('RestylingAppController', ['$scope', 'ChromeMessageService',
-    function($scope, chromeMessageService) {
+restylingApp.controller('RestylingAppController', ['$scope', 'ChromeMessageService', 'Schema',
+    function($scope, chromeMessageService, Schema) {
         $scope.selectedSchema = 0;
         $scope.data = [];
         $scope.ids = [];
         $scope.selectedRows = [];
 
         // Load data from the visualization as it arrives
-        function setupMessageServiceData (dataObj) {
-            console.log('data received');
+        var setupSchemaData = function(dataObj) {
             var ids = dataObj.ids;
             var data = dataObj.schematized;
-            _.each(data, function(schema, i) {
-                data[i].numNodes = schema.ids.length;
+            var schemas = [];
+
+            _.each(data, function(schema) {
+                schemas.push(Schema.fromDeconData(schema));
             });
-            console.log("data received");
-            console.log(data);
+
             $scope.ids = ids;
-            $scope.data = data;
-            $scope.$apply();
-        }
-        chromeMessageService.receiveData(setupMessageServiceData);
+            $scope.data = schemas;
+        };
+
+        chromeMessageService.receiveData(setupSchemaData);
 
         $scope.selectSchema = function(schema) {
             console.log($scope.data);
@@ -34,25 +34,8 @@ restylingApp.controller('RestylingAppController', ['$scope', 'ChromeMessageServi
         };
 
         $scope.doUpdate = function(updateMessage, schema) {
-            var val = updateMessage.val;
-            var attr = updateMessage.attr;
-            _.each(updateMessage.ids, function(id, ind) {
-                schema.attrs[attr][ind] = val;
-
-                if (attr === "area") {
-                    schema.attrs["width"] = Math.sqrt(updateMessage.val);
-                }
-                else if (attr === "width" || attr === "height") {
-                    schema.attrs["area"] = schema.attrs["width"][ind]
-                        * schema.attrs["height"][ind];
-                }
-            });
-
+            schema.updateWithMessage(updateMessage);
             chromeMessageService.sendMessage(updateMessage);
-        };
-
-        $scope.getNumber = function(number) {
-            return new Array(number);
         };
 
         $scope.updateDataWithLinearMapping = function(mapping, schemaInd) {
@@ -60,7 +43,6 @@ restylingApp.controller('RestylingAppController', ['$scope', 'ChromeMessageServi
             var attrArray = $scope.data[schemaInd].attrs[mapping.attr];
             var schema = $scope.data[schemaInd];
             _.each(attrArray, function(attrVal, ind) {
-
                 var newAttrVal = 0;
                 _.each(mapping.params.coeffs, function(coeff, coeffInd) {
                     if (coeffInd < mapping.data.length) {
@@ -73,7 +55,6 @@ restylingApp.controller('RestylingAppController', ['$scope', 'ChromeMessageServi
                     }
                 });
 
-                attrArray[ind] = newAttrVal;
                 var message = {
                     type: "update",
                     attr: mapping.attr,

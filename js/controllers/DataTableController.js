@@ -6,6 +6,10 @@ var restylingApp = angular.module('restylingApp');
 
 restylingApp.controller('DataTableController', ['$scope', 'orderByFilter',
     function($scope, orderByFilter) {
+        $scope.getNumber = function(number) {
+            return new Array(number);
+        };
+
         $scope.saveFilename = "";
 
         $scope.getSchemaSize = function(schema) {
