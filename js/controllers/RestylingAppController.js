@@ -7,6 +7,7 @@ restylingApp.controller('RestylingAppController', ['$scope', 'ChromeMessageServi
     function($scope, chromeMessageService) {
         $scope.selectedSchema = 0;
         $scope.data = [];
+        $scope.ids = [];
         $scope.selectedRows = [];
 
         // Load data from the visualization as it arrives
@@ -39,7 +40,7 @@ restylingApp.controller('RestylingAppController', ['$scope', 'ChromeMessageServi
                 schema.attrs[attr][ind] = val;
 
                 if (attr === "area") {
-                    schema.attrs["width"] = Math.sqrt(replaceVal);
+                    schema.attrs["width"] = Math.sqrt(updateMessage.val);
                 }
                 else if (attr === "width" || attr === "height") {
                     schema.attrs["area"] = schema.attrs["width"][ind]

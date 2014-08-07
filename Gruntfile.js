@@ -14,7 +14,18 @@ module.exports = function(grunt) {
                 src: ['js/restyling.js'],
                 dest: 'build/restyling.js'
             }
+        },
+        watch: {
+            scripts: {
+                files: ['js/**/*.js'],
+                tasks: ['browserify'],
+                options: {
+                    spawn: false,
+                    interrupt: true
+                }
+            }
         }
     });
     grunt.loadNpmTasks('grunt-browserify');
+    grunt.loadNpmTasks('grunt-contrib-watch');
 };

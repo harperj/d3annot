@@ -1,8 +1,8 @@
 {
   "browserify-shim": {
-      "lib/angular.js": {
-          "exports": "angular"
-      }
+    "lib/angular.js": {
+      "exports": "angular"
+    }
   },
   "browserify": {
     "transform": [
@@ -13,6 +13,7 @@
     "grunt": "^0.4.5",
     "grunt-browserify": "^2.1.4",
     "grunt-contrib-concat": "~0.3.0",
+    "grunt-contrib-watch": "^0.6.1",
     "jquery": "~2.1.0",
     "moment": "~2.5.1"
   }

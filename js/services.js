@@ -3,7 +3,7 @@ var $ = require('jquery');
 
 var restylingApp = angular.module('restylingApp');
 
-restylingApp.factory('ChromeMessageService', function() {
+restylingApp.service('ChromeMessageService', function() {
     var port;
 
     function addDataListener(callback) {

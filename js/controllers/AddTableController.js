@@ -5,8 +5,10 @@ var angular = require('../../lib/angular');
 var restylingApp = angular.module('restylingApp');
 
 restylingApp.controller('AddTableController', ['$scope', function($scope) {
-    $scope.createMarks = function(schemaID) {
+    window.dataScope = $scope;
 
+    $scope.createMarks = function(schemaID) {
+        var schema = $scope.data[schemaID];
     };
 
     $scope.addCSVDataTable = function() {
@@ -21,6 +23,7 @@ restylingApp.controller('AddTableController', ['$scope', function($scope) {
             attrs: null,
             ids: null,
             nodeAttrs: null,
+            numNodes: $scope.loadedSchemaDataLength,
             schema: _.keys(newSchemaData)
         };
 
