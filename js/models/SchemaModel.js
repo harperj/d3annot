@@ -1,4 +1,5 @@
 var angular = require('../../lib/angular');
+var _ = require('underscore');
 
 var restylingApp = angular.module('restylingApp');
 
@@ -26,6 +27,23 @@ restylingApp.factory('Schema', function () {
                     * schema.attrs["height"][ind];
             }
         });
+    };
+
+    Schema.prototype.attrIsMapped = function(attr) {
+        return _.find(this.mappings, function(mapping) {
+            return mapping.attr == attr;
+        }) !== undefined;
+    };
+
+    Schema.prototype.uniqVals = function(fieldName, isAttr) {
+        var allVals;
+        if (isAttr) {
+            allVals = this.attrs[fieldName];
+        }
+        else {
+            allVals = this.data[fieldName];
+        }
+        return _.uniq(allVals);
     };
 
     Schema.fromDeconData = function(deconData) {

@@ -35,24 +35,6 @@ restylingApp.controller('AddMappingsController', ['$scope', function($scope) {
         return false;
     };
 
-    $scope.isMapped = function(attr) {
-        var schema = $scope.data[$scope.selectedSchema];
-        return _.find(schema.mappings, function(mapping) {
-            return mapping.attr == attr;
-        }) !== undefined;
-    };
-
-    $scope.uniqVals = function(schemaInd, fieldName, isAttr) {
-        var allVals;
-        if (isAttr) {
-            allVals = $scope.data[schemaInd].attrs[fieldName];
-        }
-        else {
-            allVals = $scope.data[schemaInd].data[fieldName];
-        }
-        return _.uniq(allVals);
-    };
-
     $scope.attrChange = function($event, oldAttrVal, attr) {
         if ($event.keyCode === 13) { //enter key
             var schema = $scope.data[$scope.selectedSchema];

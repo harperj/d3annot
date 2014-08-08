@@ -88,7 +88,7 @@
                             <th>Orig</th>
                             <th>New</th>
                         </tr>
-                        <tr ng-repeat="attrClass in uniqVals(selectedSchema, attrSelected, true)">
+                        <tr ng-repeat="attrClass in data[selectedSchema].uniqVals(attrSelected, true)">
                             <td>{{attrClass}}</td>
                             <td><input class="form-control" ng-keypress="attrChange($event, attrClass, attrSelected)"></td>
                         </tr>
@@ -96,8 +96,8 @@
 				</span>
 
 					<span ng-if="showAddLinearMappingDialog()">
-						<p style="color:red;" ng-if="attrSelected && isMapped(attrSelected)">
-                            Warning: {{attrSelected}} already has a mapping from {{isMapped(attrSelected).data}}.
+						<p style="color:red;" ng-if="attrSelected && data[selectedSchema].attrIsMapped(attrSelected)">
+                            Warning: {{attrSelected}} already has a mapping from {{data[selectedSchema].attrIsMapped(attrSelected).data}}.
                             Changing the values for this attribute will remove its existing mapping.
                         </p>
 						<table class="table">
@@ -142,7 +142,7 @@
                                     {{attrSelected}}
                                 </th>
                             </tr>
-                            <tr ng-repeat="from in uniqVals(selectedSchema, dataFieldsSelected[0])">
+                            <tr ng-repeat="from in data[selectedSchema].uniqVals(dataFieldsSelected[0])">
                                 <td>
                                     {{from}}
                                 </td>
