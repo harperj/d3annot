@@ -3,28 +3,12 @@ var angular = require('../../lib/angular');
 
 var restylingApp = angular.module('restylingApp');
 
-restylingApp.controller('RestylingAppController', ['$scope', 'ChromeMessageService', 'Schema',
-    function($scope, chromeMessageService, Schema) {
+restylingApp.controller('RestylingAppController', ['$scope', 'VisDataService',
+    function($scope, visDataService) {
         $scope.selectedSchema = 0;
-        $scope.data = [];
-        $scope.ids = [];
+        $scope.data = visDataService.visData;
+        $scope.ids = visDataService.ids;
         $scope.selectedRows = [];
-
-        // Load data from the visualization as it arrives
-        var setupSchemaData = function(dataObj) {
-            var ids = dataObj.ids;
-            var data = dataObj.schematized;
-            var schemas = [];
-
-            _.each(data, function(schema) {
-                schemas.push(Schema.fromDeconData(schema));
-            });
-
-            $scope.ids = ids;
-            $scope.data = schemas;
-        };
-
-        chromeMessageService.receiveData(setupSchemaData);
 
         $scope.selectSchema = function(schema) {
             console.log($scope.data);
@@ -35,7 +19,7 @@ restylingApp.controller('RestylingAppController', ['$scope', 'ChromeMessageServi
 
         $scope.doUpdate = function(updateMessage, schema) {
             schema.updateWithMessage(updateMessage);
-            chromeMessageService.sendMessage(updateMessage);
+            visDataService.sendMessage(updateMessage);
         };
 
         $scope.updateDataWithLinearMapping = function(mapping, schemaInd) {

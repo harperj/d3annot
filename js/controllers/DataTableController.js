@@ -4,8 +4,11 @@ var VisDeconstruct = require('../VisDeconstruct');
 
 var restylingApp = angular.module('restylingApp');
 
-restylingApp.controller('DataTableController', ['$scope', 'orderByFilter',
-    function($scope, orderByFilter) {
+restylingApp.controller('DataTableController', ['$scope', 'orderByFilter', 'VisDataService',
+    function($scope, orderByFilter, visDataService) {
+        $scope.data = visDataService.visData;
+        $scope.ids = visDataService.ids;
+
         $scope.getNumber = function(number) {
             return new Array(number);
         };

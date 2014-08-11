@@ -3,11 +3,15 @@ var angular = require('../../lib/angular');
 
 var restylingApp = angular.module('restylingApp');
 
-restylingApp.controller('AddMappingsController', ['$scope', function($scope) {
+restylingApp.controller('AddMappingsController', ['$scope', 'VisDataService',
+    function($scope, visDataService) {
     $scope.dataFieldsSelected = [];
     $scope.attrSelected = "";
     $scope.newNominalMappingData = {};
     $scope.newLinearMappingData = [];
+
+    $scope.data = visDataService.visData;
+    $scope.ids = visDataService.ids;
 
     $scope.linearMappingAvailable = function() {
         var schema = $scope.data[$scope.selectedSchema];

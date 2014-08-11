@@ -1,30 +1,36 @@
 var angular = require('../lib/angular');
 var $ = require('jquery');
+var _ = require('underscore');
 
 var restylingApp = angular.module('restylingApp');
 
-restylingApp.service('ChromeMessageService', function() {
+restylingApp.service('VisDataService', ['Schema',  function(Schema) {
     var port;
+    var visData = [];
+    var ids = [];
 
-    function addDataListener(callback) {
-        chrome.runtime.onMessage.addListener(function (message, sender) {
-            if (message.type === "restylingData") {
-                var data = message.data;
-                data = $.extend([], data);
-                callback(data);
-                port = chrome.tabs.connect(sender.tab.id, {name: 'd3decon'});
-            }
-        });
-    }
+    chrome.runtime.onMessage.addListener(function(message, sender) {
+        if (message.type === "restylingData") {
+            var data = message.data;
+            data = $.extend([], data);
+
+            ids = ids.concat(data.ids);
+
+            _.each(data.schematized, function(schema) {
+                visData.push(Schema.fromDeconData(schema));
+            });
+
+            port = chrome.tabs.connect(sender.tab.id, {name: 'd3decon'});
+        }
+    });
 
     function sendMessage(message) {
         port.postMessage(message);
     }
 
     return {
-        receiveData: function (callback) {
-            addDataListener(callback);
-        },
+        ids: ids,
+        visData: visData,
         sendMessage: sendMessage
     }
-});
+}]);

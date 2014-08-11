@@ -2,9 +2,9 @@ var angular = require('../lib/angular');
 
 var restylingApp = angular.module('restylingApp', []);
 
+require('./models/SchemaModel');
 require('./services');
 require('./directives');
-require('./models/SchemaModel');
 require('./controllers/RestylingAppController');
 require('./controllers/AddMappingsController');
 require('./controllers/AddTableController');

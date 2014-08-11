@@ -2,9 +2,7 @@ module.exports = function(grunt) {
     grunt.initConfig({
         browserify: {
             options: {
-                bundleOptions: {
-                    debug: true
-                }
+                debug: true
             },
             injected: {
                 src: ['js/injected.js'],
