@@ -63,7 +63,7 @@ restylingApp.controller('AddMappingsController', ['$scope', 'VisDataService',
 
     $scope.getRemainingFields = function() {
         if ($scope.data.length > 0)
-            return _.without($scope.data[$scope.selectedSchema].schema, $scope.dataFieldsSelected);
+            return _.without(_.keys($scope.data[$scope.selectedSchema].data), $scope.dataFieldsSelected);
         return 0;
     };
 
@@ -103,7 +103,7 @@ restylingApp.controller('AddMappingsController', ['$scope', 'VisDataService',
     $scope.allowAddField = function() {
         return $scope.dataFieldsSelected.length === 0
             || ($scope.action === 'linear'
-                &&  $scope.dataFieldsSelected.length < $scope.data[$scope.selectedSchema].schema.length);
+                &&  $scope.dataFieldsSelected.length < _.keys($scope.data[$scope.selectedSchema].data).length);
     };
 
     $scope.selectMappingType = function(mappingType) {
