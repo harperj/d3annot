@@ -8,6 +8,7 @@ restylingApp.controller('DataTableController', ['$scope', 'orderByFilter', 'VisD
     function($scope, orderByFilter, visDataService) {
         $scope.data = visDataService.visData;
         $scope.ids = visDataService.ids;
+        $scope.selectedRows = [];
 
         $scope.getNumber = function(number) {
             return new Array(number);
@@ -41,8 +42,8 @@ restylingApp.controller('DataTableController', ['$scope', 'orderByFilter', 'VisD
         $scope.selectRow = function(schema, ind) {
 
             var rowSchemaInd = $scope.data.indexOf(schema);
-            if (rowSchemaInd !== $scope.selectedSchema) {
-                $scope.selectSchema($scope.data[rowSchemaInd]);
+            if (rowSchemaInd !== visDataService.getSelected()) {
+                visDataService.selectSchema($scope.data[rowSchemaInd]);
             }
 
             if ($scope.selectedRows.indexOf(ind) !== -1) {
@@ -54,7 +55,7 @@ restylingApp.controller('DataTableController', ['$scope', 'orderByFilter', 'VisD
         };
 
         $scope.rowIsSelected = function(schema, ind) {
-            if ($scope.data.indexOf(schema) === $scope.selectedSchema) {
+            if (schema === visDataService.getSelected()) {
                 return $scope.selectedRows.indexOf(ind) !== -1;
             }
             else {
@@ -64,7 +65,7 @@ restylingApp.controller('DataTableController', ['$scope', 'orderByFilter', 'VisD
 
         $scope.splitSchema = function() {
             if ($scope.selectedRows.length > 0) {
-                var schema = $scope.data[$scope.selectedSchema];
+                var schema = visDataService.getSelected();
                 $scope.selectedRows = $scope.selectedRows.sort(function(a, b){return b-a});
 
                 var newSchema = {

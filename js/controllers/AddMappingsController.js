@@ -14,7 +14,7 @@ restylingApp.controller('AddMappingsController', ['$scope', 'VisDataService',
     $scope.ids = visDataService.ids;
 
     $scope.linearMappingAvailable = function() {
-        var schema = $scope.data[$scope.selectedSchema];
+        var schema = visDataService.getSelected();
         //console.log($scope.dataFieldsSelected);
         //console.log($scope.attrSelected);
         if (!$scope.attrSelected && $scope.dataFieldsSelected.length === 0) {
@@ -41,7 +41,7 @@ restylingApp.controller('AddMappingsController', ['$scope', 'VisDataService',
 
     $scope.attrChange = function($event, oldAttrVal, attr) {
         if ($event.keyCode === 13) { //enter key
-            var schema = $scope.data[$scope.selectedSchema];
+            var schema = visDataService.getSelected();
             var newAttrVal = angular.element($event.target).val();
             var inds = [];
             for (var i = 0; i < schema.attrs[attr].length; ++i) {
@@ -51,19 +51,13 @@ restylingApp.controller('AddMappingsController', ['$scope', 'VisDataService',
                 }
             }
             var ids = _.map(inds, function(ind) {return schema.ids[ind];});
-            var message = {
-                type: "update",
-                attr: attr,
-                val: newAttrVal,
-                ids: ids
-            };
-            $scope.doUpdate(message, schema);
+            visDataService.updateNodes(attr, newAttrVal, ids);
         }
     };
 
     $scope.getRemainingFields = function() {
         if ($scope.data.length > 0)
-            return _.without(_.keys($scope.data[$scope.selectedSchema].data), $scope.dataFieldsSelected);
+            return _.without(_.keys(visDataService.getSelected().data), $scope.dataFieldsSelected);
         return 0;
     };
 
@@ -148,13 +142,7 @@ restylingApp.controller('AddMappingsController', ['$scope', 'VisDataService',
                     }
                 });
 
-                var message = {
-                    type: "update",
-                    attr: markAttr,
-                    val: nominalMap[keyVal],
-                    ids: keyIds
-                };
-                $scope.doUpdate(message, schema);
+                visDataService.updateNodes(markAttr, nominalMap[keyVal], keyIds);
             });
 
             // Now add the mapping to the schema

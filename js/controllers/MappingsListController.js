@@ -1,5 +1,6 @@
 var angular = require('../../lib/angular');
 var _ = require('underscore');
+var VisDeconstruct = require('../VisDeconstruct');
 
 var restylingApp = angular.module('restylingApp');
 
@@ -25,7 +26,7 @@ restylingApp.controller('MappingsListController', ['$scope', 'VisDataService',
         };
 
         $scope.removeMapping = function(mapping) {
-            var schema = $scope.data[$scope.selectedSchema];
+            var schema = visDataService.getSelected();
             var mappingInd = schema.mappings.indexOf(mapping);
 
             var replaceVal;
@@ -36,14 +37,7 @@ restylingApp.controller('MappingsListController', ['$scope', 'VisDataService',
                 replaceVal = mapping.params.attrMin;
             }
 
-            // update vals accordingly
-            var message = {
-                type: "update",
-                attr: mapping.attr,
-                val: replaceVal,
-                ids: schema.ids
-            };
-            $scope.doUpdate(message, schema);
+            visDataService.updateNodes(mapping.attr, replaceVal, schema.ids);
             schema.mappings = VisDeconstruct.extractMappings(schema);
 
         };
@@ -81,13 +75,8 @@ restylingApp.controller('MappingsListController', ['$scope', 'VisDataService',
                 var ids = _.map(changeInds, function (ind) {
                     return $scope.data[mappingSchemaInd].ids[ind]
                 });
-                var message = {
-                    type: "update",
-                    attr: mapping.attr,
-                    val: newVal,
-                    ids: ids
-                };
-                $scope.doUpdate(message, $scope.data[mappingSchemaInd]);
+
+                visDataService.updateNodes(mapping.attr, newVal, ids);
             }
         };
 

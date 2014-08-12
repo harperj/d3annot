@@ -44,7 +44,7 @@ restylingApp.controller('AddTableController', ['$scope', 'VisDataService',
                 return false;
             }
 
-            var leftData = $scope.data[$scope.selectedSchema].data;
+            var leftData = visDataService.getSelected().data;
             var rightData = $scope.loadedSchemaData;
             var leftLength = leftData[_.keys(leftData)[0]].length;
             var rightLength = $scope.loadedSchemaDataLength;
@@ -82,7 +82,7 @@ restylingApp.controller('AddTableController', ['$scope', 'VisDataService',
                 }
             }
             console.log(leftData);
-            $scope.data[$scope.selectedSchema].schema = _.keys(leftData);
+            visDataService.getSelected().schema = _.keys(leftData);
         };
     }
 ]);

@@ -37,10 +37,15 @@ function initRestylingInterface(visData) {
 }
 
 function restylingPortHandler(message) {
+    console.log(message);
     if (message.type === "update") {
-        console.log(message);
         var evt = document.createEvent("CustomEvent");
         evt.initCustomEvent("updateEvent", true, true, message);
+        document.dispatchEvent(evt);
+    }
+    else if (message.type === "create") {
+        var evt = document.createEvent("CustomEvent");
+        evt.initCustomEvent("createEvent", true, true, message);
         document.dispatchEvent(evt);
     }
     else {

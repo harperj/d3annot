@@ -155,6 +155,9 @@ var VisUpdater = function(svgNode, markNodes, ids, schemas) {
             newNode = document.createElementNS("http://www.w3.org/2000/svg", shapeName);
             d3.select(newNode).attr("r", 1);
         }
+        else {
+            newNode = document.createElementNS("http://www.w3.org/2000/svg", shapeName);
+        }
 
         return newNode;
     }
