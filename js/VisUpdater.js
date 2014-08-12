@@ -6,6 +6,7 @@
 var $ = require('jquery');
 var _ = require('underscore');
 var d3 = require('d3');
+var VisDeconstruct = require('./VisDeconstruct');
 
 var VisUpdater = function(svgNode, markNodes, ids, schemas) {
     var currentNodes = new Array(markNodes.length);
@@ -35,6 +36,21 @@ var VisUpdater = function(svgNode, markNodes, ids, schemas) {
             }
         });
         return schemaInd;
+    }
+
+    function createNodes(nodeIds) {
+        var createdNodes = [];
+
+        _.each(nodeIds, function(nodeId) {
+            ids.push(nodeId);
+            var thisNode = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+            d3.select(thisNode).attr("r", 1);
+            svgNode[0].appendChild(thisNode);
+            markNodes.push(thisNode);
+            createdNodes.push(thisNode);
+//            console.log(thisNode);
+//            console.log(VisDeconstruct.extractVisAttrs({nodes: [thisNode]}));
+        });
     }
 
     function updateNodes(nodeIds, attr, val) {
@@ -197,10 +213,11 @@ var VisUpdater = function(svgNode, markNodes, ids, schemas) {
         bb.y = yMin;
         bb.height = yMax - yMin;
         return bb;
-    };
+    }
 
     return {
-        updateNodes: updateNodes
+        updateNodes: updateNodes,
+        createNodes: createNodes
     };
 
 };

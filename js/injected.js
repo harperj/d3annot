@@ -20,6 +20,11 @@ document.addEventListener("updateEvent", function(event) {
     updater.updateNodes(updateMessage.ids, updateMessage.attr, updateMessage.val);
 });
 
+document.addEventListener("createEvent", function(event) {
+    var createMessage = event.detail;
+    updater.createNodes(createMessage.ids);
+});
+
 /**
  * Accepts a top level SVG node and deconstructs it by extracting data, marks, and the
  * mappings between them.

@@ -12,9 +12,17 @@ restylingApp.controller('AddTableController', ['$scope', 'VisDataService',
 
         $scope.createMarks = function(schemaID) {
             var schema = $scope.data[schemaID];
+
+            var newIds = [];
+            var maxId = _.max($scope.ids);
+            var dataSize = schema.data[_.keys(schema.data)[0]].length;
+            for (var i = 1; i < dataSize+1; ++i) {
+                newIds.push(maxId + i);
+            }
+
             var createMarksMessage = {
                 type: "create",
-                ids: schema.ids
+                ids: newIds
             };
             visDataService.sendMessage(createMarksMessage);
         };
