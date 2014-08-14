@@ -1,11 +1,48 @@
 var angular = require('../../lib/angular');
 var _ = require('underscore');
+_.mixin( require('underscore.deferred') );
+var Miso = require('miso.dataset');
 
 var restylingApp = angular.module('restylingApp');
 
 function Schema(data, attrs, nodeAttrs, ids, mappings) {
     this.data = data;
     this.attrs = attrs;
+
+    var columnData = [];
+    _.each(data, function(val, key) {
+        columnData.push({
+            name: key,
+            data: val
+        });
+    });
+    _.each(attrs, function(val, key) {
+        columnData.push({
+            name: key,
+            data: val
+        });
+    });
+
+    console.log(columnData);
+
+    var dataset = new Miso.Dataset({
+        data: { columns: columnData },
+    });
+
+    dataset.fetch({
+        success: function() {
+            console.log("success");
+            dataset.eachColumn(function(columnName) {
+                console.log(columnName);
+                console.log(dataset.column(columnName).data);
+            });
+        },
+        error: function() {
+            console.log('failure');
+        }
+    });
+    console.log(dataset);
+
     this.ids = ids;
     this.mappings = mappings;
     this.nodeAttrs = nodeAttrs;
