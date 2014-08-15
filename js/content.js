@@ -14,6 +14,7 @@ if (window === top) {
             });
         }
         else if (req.type == "pageActionClicked") {
+            deconSetup();
             // User clicked the page action, so we inject the main plugin script
             document.addEventListener('deconDataEvent', function(event) {
                 initRestylingInterface(event.detail);
@@ -75,5 +76,3 @@ function injectD3Check() {
     console.log("injecting d3 checker");
     injectJS(chrome.extension.getURL('js/d3check.js'));
 }
-
-deconSetup();

@@ -11,6 +11,7 @@ $(document).bind("contextmenu", function (event) {
     var ancestorSVG = $(event.target).closest("svg");
     if (ancestorSVG.length > 0) {
         event.preventDefault();
+        pageDeconstruct();
         return visDeconstruct(ancestorSVG);
     }
 });
@@ -47,4 +48,26 @@ function visDeconstruct(svgNode) {
     var evt = document.createEvent("CustomEvent");
     evt.initCustomEvent("deconDataEvent", true, true, deconData);
     document.dispatchEvent(evt);
+}
+
+
+function pageDeconstruct() {
+    var svgNodes = $('svg');
+    var deconstructed = [];
+    $.each(svgNodes, function(i, svgNode) {
+        var children = $(svgNode).find('*');
+        var isD3Node = false;
+        $.each(children, function(i, child) {
+            if (child.__data__) {
+                isD3Node = true;
+                return false;
+            }
+        });
+
+        if (isD3Node) {
+            var decon = VisDeconstruct.deconstruct(svgNode);
+            deconstructed.push(decon);
+        }
+    });
+    console.log(deconstructed);
 }

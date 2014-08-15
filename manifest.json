@@ -17,9 +17,9 @@
         "scripts": ["js/background.js"]
     },
 
-    "page_action": {
-        "default_name": "D3 Deconstructor",
-        "default_icon": "d3logo.png"
+    "browser_action": {
+        "default_icon": "d3logo.png",
+        "default_title": "D3 Deconstructor"
     },
 
     "permissions": [
