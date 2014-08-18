@@ -1,8 +1,8 @@
 {
     "manifest_version": 2,
 
-    "name": "D3 Annotator",
-    "description": "This extension allows the user to annotate and record activities performed on d3.js visualizations.",
+    "name": "D3 Deconstructor",
+    "description": "This extension allows the user deconstruct D3 visualizations on a page.",
     "version": "1.0",
     "icons": { "128": "d3logo.png" },
     "content_scripts": [

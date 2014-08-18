@@ -6,15 +6,17 @@ var $ = require('jquery');
 
 var updater;
 
-/** Binds right click to initiate deconstruction on the root SVG node. **/
-$(document).bind("contextmenu", function (event) {
-    var ancestorSVG = $(event.target).closest("svg");
-    if (ancestorSVG.length > 0) {
-        event.preventDefault();
-        pageDeconstruct();
-        return visDeconstruct(ancestorSVG);
-    }
-});
+pageDeconstruct();
+
+///** Binds right click to initiate deconstruction on the root SVG node. **/
+//$(document).bind("contextmenu", function (event) {
+//    var ancestorSVG = $(event.target).closest("svg");
+//    if (ancestorSVG.length > 0) {
+//        event.preventDefault();
+//        pageDeconstruct();
+//        return visDeconstruct(ancestorSVG);
+//    }
+//});
 
 document.addEventListener("updateEvent", function(event) {
     var updateMessage = event.detail;
@@ -66,8 +68,14 @@ function pageDeconstruct() {
 
         if (isD3Node) {
             var decon = VisDeconstruct.deconstruct(svgNode);
+            decon = {
+                schematized: decon.schematizedData,
+                ids: decon.dataNodes.ids
+            };
             deconstructed.push(decon);
         }
     });
-    console.log(deconstructed);
+    var evt = document.createEvent("CustomEvent");
+    evt.initCustomEvent("deconDataEvent", true, true, deconstructed);
+    document.dispatchEvent(evt);
 }

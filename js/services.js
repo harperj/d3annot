@@ -6,9 +6,11 @@ var restylingApp = angular.module('restylingApp');
 
 restylingApp.service('VisDataService', ['Schema',  function(Schema) {
     var port;
+    var pageData = [];
     var visData = [];
     var ids = [];
-    var selectedSchema = 0;
+    var selectedVis = 0;
+    var selectedSchema = {val: 0};
 
     function updateNodes(attr, val, ids) {
         var message = {
@@ -23,13 +25,13 @@ restylingApp.service('VisDataService', ['Schema',  function(Schema) {
 
     function selectSchema(schema) {
         console.log(visData);
-        selectedSchema = visData.indexOf(schema);
+        selectedSchema.val = visData.indexOf(schema);
         var selectedRows = [];
-        console.log(selectedSchema);
+        console.log(selectedSchema.val);
     }
 
     function getSelected() {
-        return visData[selectedSchema];
+        return visData[selectedSchema.val];
     }
 
     function updateDataWithLinearMapping(mapping, schemaInd) {
@@ -51,22 +53,34 @@ restylingApp.service('VisDataService', ['Schema',  function(Schema) {
 
             updateNodes(mapping.attr, newAttrVal, [visData[schemaInd].ids[ind]]);
         });
-    };
+    }
 
     chrome.runtime.onMessage.addListener(function(message, sender) {
         if (message.type === "restylingData") {
             var data = message.data;
             data = $.extend([], data);
 
-            ids = ids.concat(data.ids);
-
-            _.each(data.schematized, function(schema) {
-                visData.push(Schema.fromDeconData(schema));
+            _.each(data, function(datum) {
+                pageData.push(datum);
             });
+
+            selectVis(selectedVis);
 
             port = chrome.tabs.connect(sender.tab.id, {name: 'd3decon'});
         }
     });
+
+    function selectVis(visID) {
+        selectedVis = visID;
+        ids = pageData[visID].ids;
+
+        while (visData.length > 0) {
+            visData.pop();
+        }
+        _.each(pageData[visID].schematized, function(schema) {
+            visData.push(Schema.fromDeconData(schema));
+        });
+    }
 
     function sendMessage(message) {
         port.postMessage(message);
@@ -80,6 +94,9 @@ restylingApp.service('VisDataService', ['Schema',  function(Schema) {
         updateNodes: updateNodes,
         selectSchema: selectSchema,
         getSelected: getSelected,
-        selectedSchema: selectedSchema
+        selectedSchema: selectedSchema,
+        pageData: pageData,
+        selectedVis: selectedVis,
+        selectVis: selectVis
     }
 }]);

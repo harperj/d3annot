@@ -6,6 +6,18 @@
                 <input ng-model="saveFilename" type="text" name="filename" />
             </label>
             <button ng-click="saveData()">Save</button>
+            <br />
+            <label>
+                Visualization {{selectedVis+1}} selected out of {{pageData.length}} found on page. <br />
+                Select a visualization:
+                <select ng-change="changeVis()"
+                        ng-model="visSelectorVal">
+                    <option ng-repeat="num in getNumber(pageData.length) track by $index"
+                            value="{{$index}}">
+                        {{$index+1}}
+                    </option>
+                </select>
+            </label>
         </form>
     </div>
 

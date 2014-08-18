@@ -1,14 +1,22 @@
 var _ = require('underscore');
 var angular = require('../../lib/angular');
 var VisDeconstruct = require('../VisDeconstruct');
+var saveAs = require('filesaver.js');
 
 var restylingApp = angular.module('restylingApp');
 
 restylingApp.controller('DataTableController', ['$scope', 'orderByFilter', 'VisDataService',
     function($scope, orderByFilter, visDataService) {
+        $scope.selectedVis = visDataService.selectedVis;
+        $scope.visSelectorVal = 0;
+        $scope.pageData = visDataService.pageData;
         $scope.data = visDataService.visData;
         $scope.ids = visDataService.ids;
         $scope.selectedRows = [];
+
+        $scope.changeVis = function() {
+            visDataService.selectVis($scope.visSelectorVal);
+        };
 
         $scope.getNumber = function(number) {
             return new Array(number);
@@ -26,7 +34,7 @@ restylingApp.controller('DataTableController', ['$scope', 'orderByFilter', 'VisD
         };
 
         $scope.saveData = function() {
-            saveAs(new Blob([JSON.stringify($scope.data)]), $scope.saveFilename);
+            saveAs(new Blob([JSON.stringify(visDataService.visData)]), $scope.saveFilename);
         };
 
         $scope.findSchemaById = function(id) {
@@ -38,6 +46,8 @@ restylingApp.controller('DataTableController', ['$scope', 'orderByFilter', 'VisD
             });
             return schemaInd;
         };
+
+        $scope.selectSchema = visDataService.selectSchema;
 
         $scope.selectRow = function(schema, ind) {
 
