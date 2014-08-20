@@ -17,7 +17,8 @@ restylingApp.service('VisDataService', ['Schema',  function(Schema) {
             type: "update",
             attr: attr,
             val: val,
-            ids: ids
+            ids: ids,
+            vis: selectedVis
         };
         sendMessage(message);
         visData[selectedSchema].updateWithMessage(message);

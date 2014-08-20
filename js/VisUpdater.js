@@ -48,9 +48,10 @@ var VisUpdater = function(svgNode, markNodes, ids, schemas) {
             svgNode[0].appendChild(thisNode);
             markNodes.push(thisNode);
             createdNodes.push(thisNode);
-//            console.log(thisNode);
-//            console.log(VisDeconstruct.extractVisAttrs({nodes: [thisNode]}));
         });
+
+        var visAttrs = VisDeconstruct.extractVisAttrs(createdNodes);
+        console.log(visAttrs);
     }
 
     function updateNodes(nodeIds, attr, val) {

@@ -4,7 +4,7 @@ var VisUpdater = require('./VisUpdater.js');
 var VisDeconstruct = require('./VisDeconstruct.js');
 var $ = require('jquery');
 
-var updater;
+var updaters = [];
 
 pageDeconstruct();
 
@@ -20,12 +20,12 @@ pageDeconstruct();
 
 document.addEventListener("updateEvent", function(event) {
     var updateMessage = event.detail;
-    updater.updateNodes(updateMessage.ids, updateMessage.attr, updateMessage.val);
+    updaters[updateMessage.vis].updateNodes(updateMessage.ids, updateMessage.attr, updateMessage.val);
 });
 
 document.addEventListener("createEvent", function(event) {
     var createMessage = event.detail;
-    updater.createNodes(createMessage.ids);
+    updaters[createMessage.vis].createNodes(createMessage.ids);
 });
 
 /**
@@ -36,8 +36,8 @@ document.addEventListener("createEvent", function(event) {
 function visDeconstruct(svgNode) {
     var deconstructed = VisDeconstruct.deconstruct(svgNode);
 
-    updater = new VisUpdater(svgNode, deconstructed.dataNodes.nodes, deconstructed.dataNodes.ids,
-        deconstructed.schematizedData);
+    updaters.push(new VisUpdater(svgNode, deconstructed.dataNodes.nodes, deconstructed.dataNodes.ids,
+        deconstructed.schematizedData));
 
     console.log(deconstructed.schematizedData);
 
@@ -56,6 +56,9 @@ function visDeconstruct(svgNode) {
 function pageDeconstruct() {
     var svgNodes = $('svg');
     var deconstructed = [];
+    var nodes = [];
+    var ids = [];
+
     $.each(svgNodes, function(i, svgNode) {
         var children = $(svgNode).find('*');
         var isD3Node = false;
@@ -68,13 +71,18 @@ function pageDeconstruct() {
 
         if (isD3Node) {
             var decon = VisDeconstruct.deconstruct(svgNode);
-            decon = {
+            nodes = nodes.concat(decon.dataNodes.nodes);
+            ids = ids.concat(decon.dataNodes.ids);
+            updaters.push(new VisUpdater(svgNode, decon.dataNodes.nodes, decon.dataNodes.ids,
+                decon.schematizedData));
+            var deconData = {
                 schematized: decon.schematizedData,
                 ids: decon.dataNodes.ids
             };
-            deconstructed.push(decon);
+            deconstructed.push(deconData);
         }
     });
+
     var evt = document.createEvent("CustomEvent");
     evt.initCustomEvent("deconDataEvent", true, true, deconstructed);
     document.dispatchEvent(evt);

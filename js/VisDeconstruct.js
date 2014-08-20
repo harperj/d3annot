@@ -5,7 +5,7 @@ var sylvester   = require('../lib/sylvester.js');
 function deconstruct(svgNode) {
     var dataNodes = extractData(svgNode);
     var nodeInfo = {};
-    nodeInfo.attrData = extractVisAttrs(dataNodes);
+    nodeInfo.attrData = extractVisAttrs(dataNodes.nodes);
     nodeInfo.nodeAttrs = extractNodeAttrs(dataNodes.nodes);
     nodeInfo.nodes = dataNodes.nodes;
     var schematizedData = schematize(dataNodes.data, dataNodes.ids, nodeInfo);
@@ -583,8 +583,7 @@ function extractData(svgNode) {
  * @param nodes
  * @returns {Array}
  */
-function extractVisAttrs (nodeData) {
-    var nodes = nodeData.nodes;
+function extractVisAttrs (nodes) {
     var visAttrData = [];
 
     for (var i = 0; i < nodes.length; ++i) {
