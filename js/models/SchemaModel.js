@@ -63,6 +63,29 @@ Schema.prototype.uniqVals = function(fieldName, isAttr) {
     return _.uniq(allVals);
 };
 
+Schema.prototype.getDataCSVBlob = function() {
+    var keys = Object.keys(this.data);
+    console.log(keys);
+    var dataLen = this.data[keys[0]].length;
+    var dataRows = [];
+
+    dataRows.push(keys.join(","));
+
+    for (var i = 0; i < dataLen; ++i) {
+        var dataRow = [];
+        for (var j = 0; j < keys.length; ++j) {
+            dataRow.push(this.data[keys[j]][i]);
+        }
+        console.log(dataRow);
+        dataRow = dataRow.join(",");
+        dataRows.push(dataRow);
+    }
+
+    dataRows = dataRows.join("\n");
+
+    return dataRows;
+};
+
 Schema.fromDeconData = function(deconData) {
     return new Schema(
         deconData.data,

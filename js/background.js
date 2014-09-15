@@ -2,9 +2,11 @@
 (function () {
     chrome.runtime.onMessage.addListener(function (message, sender, sendResponse) {
         if (message.type == "initRestyling") {
-            chrome.windows.create({url: chrome.extension.getURL('display.html')})
+            chrome.windows.create({url: chrome.extension.getURL('display.html')}, function() {
+                console.log("callback on create window");
+            });
+            sendResponse({ });
         }
-        sendResponse({ });
     });
 
     chrome.browserAction.onClicked.addListener(function (tab) {

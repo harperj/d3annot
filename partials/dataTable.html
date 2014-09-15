@@ -2,10 +2,12 @@
     <div>
         <form>
             <label>
-                File name:
+                <span><b>Export data as one or more files.</b> Select a file name </span><br />
+                <span><b>File name:</b></span>
                 <input ng-model="saveFilename" type="text" name="filename" />
             </label>
             <button ng-click="saveData()">Save</button>
+            <button ng-click="saveVisDataCSV()">Save all as CSV</button>
             <br />
             <label>
                 Visualization {{selectedVis.val+1}} selected out of {{visDataService.pageData.length}} found on page. <br />
@@ -22,8 +24,8 @@
     </div>
 
     <div class="dataContainer" ng-repeat="schema in visDataService.visData | orderBy:'numFields':true">
-        <button ng-click="selectSchema(schema)">Select</button>
-        <h3 class="sectionHeader">Data Table {{$index+1}}</h3>
+        <h3 ng-click="selectSchema(schema)" class="sectionHeader">Data Table {{$index+1}}</h3>
+        <button ng-click="saveSchemaDataCSV(schema, $index+1)">Save CSV</button>
         <table class="table dataTable" ng-right-click="splitSchema()">
             <thead ng-click="">
             <tr class="headerRow">

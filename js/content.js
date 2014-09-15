@@ -5,16 +5,7 @@ var alreadyInjected = false;
 
 if (window === top) {
     chrome.extension.onRequest.addListener(function(req, sender, sendResponse) {
-        if (req.type == "d3Check") {
-            // Inject code to check if D3 is included with the page
-            injectD3Check();
-
-            // Injected script will send a custom event with boolean
-            document.addEventListener('d3FoundEvent', function(event) {
-                sendResponse(event.detail);
-            });
-        }
-        else if (req.type == "pageActionClicked") {
+        if (req.type == "pageActionClicked") {
             if (!alreadyInjected) {
                 // User clicked the page action for the first time, so we inject the main plugin script
                 injectJS(chrome.extension.getURL('build/injected.js'));

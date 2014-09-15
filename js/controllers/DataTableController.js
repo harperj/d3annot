@@ -3,6 +3,8 @@ var angular = require('../../lib/angular');
 var VisDeconstruct = require('../VisDeconstruct');
 var saveAs = require('filesaver.js');
 
+window.saveAs = saveAs;
+
 var restylingApp = angular.module('restylingApp');
 
 restylingApp.controller('DataTableController', ['$scope', 'orderByFilter', 'VisDataService',
@@ -38,6 +40,18 @@ restylingApp.controller('DataTableController', ['$scope', 'orderByFilter', 'VisD
 
         $scope.saveData = function() {
             saveAs(new Blob([JSON.stringify(visDataService.visData)]), $scope.saveFilename);
+        };
+
+        $scope.saveSchemaDataCSV = function(schema, ind) {
+            var blob = new Blob([schema.getDataCSVBlob()], { type: "text/csv;charset=utf-8" });
+            saveAs(blob, "schema-"+ind.toString()+".csv");
+        };
+
+        $scope.saveVisDataCSV = function() {
+            var orderedVisData = orderByFilter(visDataService.visData, 'numFields', true);
+            for (var i = 0; i < orderedVisData.length; ++i) {
+                $scope.saveSchemaDataCSV(orderedVisData[i], i+1);
+            }
         };
 
         $scope.findSchemaById = function(id) {
