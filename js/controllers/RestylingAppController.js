@@ -6,7 +6,8 @@ var restylingApp = angular.module('restylingApp');
 restylingApp.controller('RestylingAppController', ['$scope', 'VisDataService',
     function($scope, visDataService) {
 //        $scope.selectedSchema = 0;
-//        $scope.data = visDataService.visData;
+        window.dataService = visDataService;
+        $scope.data = visDataService.visData;
 //        $scope.ids = visDataService.ids;
 //        $scope.selectedRows = [];
 //

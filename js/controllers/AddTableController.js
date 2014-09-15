@@ -6,9 +6,16 @@ var restylingApp = angular.module('restylingApp');
 
 restylingApp.controller('AddTableController', ['$scope', 'VisDataService',
     function($scope, visDataService) {
-        window.dataScope = $scope;
-        $scope.data = visDataService.visData;
-        $scope.ids = visDataService.ids;
+        $scope.$watch(function () { return visDataService.visData }, function (newVal, oldVal) {
+            if (typeof newVal !== 'undefined') {
+                $scope.data = visDataService.visData;
+            }
+        });
+        $scope.$watch(function () { return visDataService.ids }, function (newVal, oldVal) {
+            if (typeof newVal !== 'undefined') {
+                $scope.ids = visDataService.ids;
+            }
+        });
 
         $scope.createMarks = function(schemaID) {
             var schema = $scope.data[schemaID];

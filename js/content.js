@@ -1,6 +1,7 @@
 "use strict";
 
 var restylingPort;
+var alreadyInjected = false;
 
 if (window === top) {
     chrome.extension.onRequest.addListener(function(req, sender, sendResponse) {
@@ -14,11 +15,20 @@ if (window === top) {
             });
         }
         else if (req.type == "pageActionClicked") {
-            deconSetup();
-            // User clicked the page action, so we inject the main plugin script
-            document.addEventListener('deconDataEvent', function(event) {
-                initRestylingInterface(event.detail);
-            });
+            if (!alreadyInjected) {
+                // User clicked the page action for the first time, so we inject the main plugin script
+                injectJS(chrome.extension.getURL('build/injected.js'));
+                alreadyInjected = true;
+                document.addEventListener('deconDataEvent', function(event) {
+                    initRestylingInterface(event.detail);
+                });
+            }
+            else {
+                // we have already injected the script -- let's just let it know we want to deconstruct again
+                var evt = document.createEvent("CustomEvent");
+                evt.initCustomEvent("deconEvent", true, true);
+                document.dispatchEvent(evt);
+            }
         }
     });
 }
@@ -26,6 +36,8 @@ if (window === top) {
 function initRestylingInterface(visData) {
     //saveAs(new Blob([JSON.stringify(visData)]), "deconOutput.json");
     chrome.runtime.sendMessage({type: "initRestyling"}, function() {
+        console.log("Initializing restyling interface.");
+        console.log(visData);
         chrome.runtime.sendMessage({type: "restylingData", data: visData});
     });
     chrome.runtime.onConnect.addListener(function(port) {
@@ -60,16 +72,6 @@ function injectJS(url) {
     script.type = 'text/javascript';
     script.src = url;
     return document.body.appendChild(script);
-}
-
-function deconSetup () {
-    // Inject scripts for the deconstruction process
-    doInject();
-}
-
-function doInject () {
-    console.log("injecting main code");
-    injectJS(chrome.extension.getURL('build/injected.js'));
 }
 
 function injectD3Check() {

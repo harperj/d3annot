@@ -7,10 +7,13 @@ var restylingApp = angular.module('restylingApp');
 
 restylingApp.controller('DataTableController', ['$scope', 'orderByFilter', 'VisDataService',
     function($scope, orderByFilter, visDataService) {
+        window.dataScope = $scope;
         $scope.selectedVis = visDataService.selectedVis;
         $scope.visSelectorVal = 0;
-        $scope.pageData = visDataService.pageData;
-        $scope.data = visDataService.visData;
+
+        $scope.visDataService = visDataService;
+        $scope.data = visDataService.data;
+
         $scope.ids = visDataService.ids;
         $scope.selectedRows = [];
 

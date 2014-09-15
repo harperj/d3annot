@@ -8,11 +8,11 @@
             <button ng-click="saveData()">Save</button>
             <br />
             <label>
-                Visualization {{selectedVis+1}} selected out of {{pageData.length}} found on page. <br />
+                Visualization {{selectedVis.val+1}} selected out of {{visDataService.pageData.length}} found on page. <br />
                 Select a visualization:
                 <select ng-change="changeVis()"
                         ng-model="visSelectorVal">
-                    <option ng-repeat="num in getNumber(pageData.length) track by $index"
+                    <option ng-repeat="num in getNumber(visDataService.pageData.length) track by $index"
                             value="{{$index}}">
                         {{$index+1}}
                     </option>
@@ -21,7 +21,7 @@
         </form>
     </div>
 
-    <div class="dataContainer" ng-repeat="schema in data | orderBy:'numNodes':true">
+    <div class="dataContainer" ng-repeat="schema in visDataService.visData | orderBy:'numFields':true">
         <button ng-click="selectSchema(schema)">Select</button>
         <h3 class="sectionHeader">Data Table {{$index+1}}</h3>
         <table class="table dataTable" ng-right-click="splitSchema()">

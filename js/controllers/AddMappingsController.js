@@ -10,8 +10,16 @@ restylingApp.controller('AddMappingsController', ['$scope', 'VisDataService',
     $scope.newNominalMappingData = {};
     $scope.newLinearMappingData = [];
 
-    $scope.data = visDataService.visData;
-    $scope.ids = visDataService.ids;
+    $scope.$watch(function () { return visDataService.visData }, function (newVal, oldVal) {
+        if (typeof newVal !== 'undefined') {
+            $scope.data = visDataService.visData;
+        }
+    });
+    $scope.$watch(function () { return visDataService.ids }, function (newVal, oldVal) {
+        if (typeof newVal !== 'undefined') {
+            $scope.ids = visDataService.ids;
+        }
+    });
 
     $scope.linearMappingAvailable = function() {
         var schema = visDataService.getSelected();

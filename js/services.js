@@ -4,12 +4,12 @@ var _ = require('underscore');
 
 var restylingApp = angular.module('restylingApp');
 
-restylingApp.service('VisDataService', ['Schema',  function(Schema) {
+restylingApp.service('VisDataService', ['Schema', '$rootScope',  function(Schema, $rootScope) {
     var port;
     var pageData = [];
     var visData = [];
     var ids = [];
-    var selectedVis = 0;
+    var selectedVis = {val: 0};
     var selectedSchema = {val: 0};
 
     function updateNodes(attr, val, ids) {
@@ -58,18 +58,29 @@ restylingApp.service('VisDataService', ['Schema',  function(Schema) {
 
     chrome.runtime.onMessage.addListener(function(message, sender) {
         if (message.type === "restylingData") {
-            var data = message.data;
-            data = $.extend([], data);
+            console.log("received restyling data message.");
+            $rootScope.$apply(function() {
+                var data = message.data;
+                data = $.extend([], data);
 
-            _.each(data, function(datum) {
-                pageData.push(datum);
+                _.each(data, function(datum) {
+                    pageData.push(datum);
+                });
+
+                selectVis(selectedVis.val);
+
+                port = chrome.tabs.connect(sender.tab.id, {name: 'd3decon'});
             });
-
-            selectVis(selectedVis);
-
-            port = chrome.tabs.connect(sender.tab.id, {name: 'd3decon'});
         }
     });
+
+    function getPageData() {
+        return pageData;
+    }
+
+    function getVisData() {
+        return pageData[selectedSchema.val];
+    }
 
     function selectVis(visID) {
         selectedVis = visID;
@@ -78,6 +89,7 @@ restylingApp.service('VisDataService', ['Schema',  function(Schema) {
         while (visData.length > 0) {
             visData.pop();
         }
+
         _.each(pageData[visID].schematized, function(schema) {
             visData.push(Schema.fromDeconData(schema));
         });
@@ -89,7 +101,6 @@ restylingApp.service('VisDataService', ['Schema',  function(Schema) {
 
     return {
         ids: ids,
-        visData: visData,
         sendMessage: sendMessage,
         updateDataWithLinearMapping: updateDataWithLinearMapping,
         updateNodes: updateNodes,
@@ -98,6 +109,7 @@ restylingApp.service('VisDataService', ['Schema',  function(Schema) {
         selectedSchema: selectedSchema,
         pageData: pageData,
         selectedVis: selectedVis,
+        visData: visData,
         selectVis: selectVis
     }
 }]);

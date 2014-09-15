@@ -23,26 +23,7 @@ function Schema(data, attrs, nodeAttrs, ids, mappings) {
         });
     });
 
-    console.log(columnData);
-
-    var dataset = new Miso.Dataset({
-        data: { columns: columnData },
-    });
-
-    dataset.fetch({
-        success: function() {
-            console.log("success");
-            dataset.eachColumn(function(columnName) {
-                console.log(columnName);
-                console.log(dataset.column(columnName).data);
-            });
-        },
-        error: function() {
-            console.log('failure');
-        }
-    });
-    console.log(dataset);
-
+    this.numFields = Object.keys(data).length;
     this.ids = ids;
     this.mappings = mappings;
     this.nodeAttrs = nodeAttrs;

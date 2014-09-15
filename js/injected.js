@@ -8,15 +8,10 @@ var updaters = [];
 
 pageDeconstruct();
 
-///** Binds right click to initiate deconstruction on the root SVG node. **/
-//$(document).bind("contextmenu", function (event) {
-//    var ancestorSVG = $(event.target).closest("svg");
-//    if (ancestorSVG.length > 0) {
-//        event.preventDefault();
-//        pageDeconstruct();
-//        return visDeconstruct(ancestorSVG);
-//    }
-//});
+document.addEventListener("deconEvent", function() {
+    console.log("let's deconstruct again");
+    pageDeconstruct();
+});
 
 document.addEventListener("updateEvent", function(event) {
     var updateMessage = event.detail;

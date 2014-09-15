@@ -755,6 +755,22 @@ var transformedBoundingBox = function (el, to) {
     return bb;
 };
 
+function createNodes(nodeIds) {
+    var createdNodes = [];
+
+    _.each(nodeIds, function(nodeId) {
+        ids.push(nodeId);
+        var thisNode = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+        d3.select(thisNode).attr("r", 1);
+        svgNode[0].appendChild(thisNode);
+        markNodes.push(thisNode);
+        createdNodes.push(thisNode);
+    });
+
+    var visAttrs = VisDeconstruct.extractVisAttrs(createdNodes);
+    console.log(visAttrs);
+}
+
 module.exports = {
     deconstruct: deconstruct,
     extractNodeAttrs: extractNodeAttrs,
