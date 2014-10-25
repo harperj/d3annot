@@ -21,7 +21,7 @@ restylingApp.service('VisDataService', ['Schema', '$rootScope',  function(Schema
             vis: selectedVis
         };
         sendMessage(message);
-        visData[selectedSchema].updateWithMessage(message);
+        visData[selectedSchema.val].updateWithMessage(message);
     }
 
     function selectSchema(schema) {

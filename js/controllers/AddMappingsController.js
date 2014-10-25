@@ -9,12 +9,10 @@ restylingApp.controller('AddMappingsController', ['$scope', 'VisDataService',
     $scope.attrSelected = "";
     $scope.newNominalMappingData = {};
     $scope.newLinearMappingData = [];
+    $scope.visDataService = visDataService;
+    $scope.data = visDataService.visData;
+    $scope.selectedSchema = visDataService.selectedSchema;
 
-    $scope.$watch(function () { return visDataService.visData }, function (newVal, oldVal) {
-        if (typeof newVal !== 'undefined') {
-            $scope.data = visDataService.visData;
-        }
-    });
     $scope.$watch(function () { return visDataService.ids }, function (newVal, oldVal) {
         if (typeof newVal !== 'undefined') {
             $scope.ids = visDataService.ids;
@@ -103,9 +101,11 @@ restylingApp.controller('AddMappingsController', ['$scope', 'VisDataService',
     };
 
     $scope.allowAddField = function() {
+        var selectedVis = visDataService.visData[visDataService.selectedSchema.val];
         return $scope.dataFieldsSelected.length === 0
             || ($scope.action === 'linear'
-                &&  $scope.dataFieldsSelected.length < _.keys($scope.data[$scope.selectedSchema].data).length);
+                &&  $scope.dataFieldsSelected.length <
+                     _.keys(selectedVis.data).length);
     };
 
     $scope.selectMappingType = function(mappingType) {
@@ -116,6 +116,9 @@ restylingApp.controller('AddMappingsController', ['$scope', 'VisDataService',
         else if (mappingType === 'nominal') {
             $scope.action = 'nominal';
             $scope.setupNewNominalMapping();
+        }
+        else if (mappingType === '') {
+            $scope.action = undefined;
         }
     };
 
@@ -133,7 +136,7 @@ restylingApp.controller('AddMappingsController', ['$scope', 'VisDataService',
 
     $scope.addNominalMapping = function($event) {
         if ($event.keyCode === 13) {
-            var schema = $scope.data[$scope.selectedSchema];
+            var schema = visDataService.getSelected();
             var dataField = $scope.dataFieldsSelected[0];
             var markAttr = $scope.attrSelected;
             var nominalMap = $scope.newNominalMappingData;
@@ -166,8 +169,7 @@ restylingApp.controller('AddMappingsController', ['$scope', 'VisDataService',
 
     $scope.addLinearMapping = function($event) {
         if ($event.keyCode === 13) {
-            console.log($scope.newLinearMappingData);
-            var schema = $scope.data[$scope.selectedSchema];
+            var schema = visDataService.getSelected();
             var dataFields = $scope.dataFieldsSelected;
             var markAttr = $scope.attrSelected;
             var coeffs = $scope.newLinearMappingData;
@@ -197,8 +199,8 @@ restylingApp.controller('AddMappingsController', ['$scope', 'VisDataService',
                     coeffs: $scope.newLinearMappingData
                 }
             };
-            $scope.data[$scope.selectedSchema].mappings.push(mapping);
-            $scope.updateDataWithLinearMapping(mapping, $scope.selectedSchema);
+            schema.mappings.push(mapping);
+            visDataService.updateDataWithLinearMapping(mapping, $scope.selectedSchema.val);
             //schema.mappings = VisDeconstruct.extractMappings(schema);
         }
     };
@@ -219,8 +221,16 @@ restylingApp.controller('AddMappingsController', ['$scope', 'VisDataService',
     };
 
     $scope.attrSelectable = function(attr) {
+        var selectedVis = visDataService.getSelected();
         return !($scope.action === "linear" &&
-            typeof $scope.data[$scope.selectedSchema].attrs[attr][0] !== "number");
+            typeof selectedVis.attrs[attr][0] !== "number");
     };
+
+    $scope.actionDisplayName = function(action) {
+        if (action === "nominal") {
+            return "categorical";
+        }
+        return action;
+    }
 
 }]);

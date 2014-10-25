@@ -98,6 +98,7 @@ var VisUpdater = function(svgNode, markNodes, ids, schemas) {
                 d3.select(newNode).style(attr, val);
             }
         });
+        d3.select(newNode).style("vector-effect", "non-scaling-stroke");
 
         var newNodeBoundingBox = transformedBoundingBox(newNode);
         var newScale = svg.createSVGTransform();
@@ -143,6 +144,8 @@ var VisUpdater = function(svgNode, markNodes, ids, schemas) {
         var newRotate = svg.createSVGTransform();
         newRotate.setRotate(+attrs['rotation'], 0, 0);
         newNode.transform.baseVal.appendItem(newRotate);
+
+        newNode.__data__ = currentNodes[ind].__data__;
 
         $(currentNodes[ind]).remove();
         currentNodes[ind] = newNode;

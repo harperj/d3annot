@@ -27,8 +27,7 @@ restylingApp.controller('MappingsListController', ['$scope', 'VisDataService',
         };
 
         $scope.removeMapping = function(mapping) {
-            var schema = visDataService.getSelected();
-//            var mappingInd = schema.mappings.indexOf(mapping);
+            var schema = visDataService.visData[visDataService.selectedSchema.val];
 
             var replaceVal;
             if (mapping.type === "nominal") {
@@ -40,7 +39,6 @@ restylingApp.controller('MappingsListController', ['$scope', 'VisDataService',
 
             visDataService.updateNodes(mapping.attr, replaceVal, schema.ids);
             schema.mappings = VisDeconstruct.extractMappings(schema);
-
         };
 
         $scope.nominalMappingChange = function($event, mapping, from) {
@@ -103,7 +101,7 @@ restylingApp.controller('MappingsListController', ['$scope', 'VisDataService',
 
             mapping.params.coeffs[changedInd] = newVal;
 
-            $scope.updateDataWithLinearMapping(mapping, mappingSchemaInd);
+            visDataService.updateDataWithLinearMapping(mapping, mappingSchemaInd);
         };
     }
 ]);

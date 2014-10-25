@@ -41,14 +41,15 @@
         Attribute:
         <div class="btn-group">
             <button type="button" class="btn btn-default dropdown-toggle deconButton" data-toggle="dropdown">
-                <span class="attrSelector">{{attrSelected}}</span>
+                <span ng-if="visDataService.getSelected().attrIsMapped(attrSelected)" style="color: red;" class="attrSelector">{{attrSelected}}</span>
+                <span ng-if="!visDataService.getSelected().attrIsMapped(attrSelected)" class="attrSelector">{{attrSelected}}</span>
                 <span class="caret"></span>
             </button>
             <ul class="dropdown-menu" role="menu">
-                <li class="deconDropDownItem" ng-repeat="(attr, val) in data[selectedSchema].attrs">
+                <li class="deconDropDownItem" ng-repeat="(attr, val) in visDataService.getSelected().attrs">
                     <a ng-if="attrSelectable(attr)"
                        ng-click="$parent.$parent.attrSelected = attr"
-                       ng-class="{mappedAttrLink: isMapped(attr)}">
+                       ng-class="{mappedAttrLink: visDataService.getSelected().attrIsMapped(attr)}">
                         {{attr}}
                     </a>
                     <a ng-if="!attrSelectable(attr)" style="color: grey;">{{attr}}</a>
@@ -60,7 +61,7 @@
         Mapping Type:
         <div class="btn-group">
             <button ng-if="dataFieldsSelected.length > 0" type="button" class="btn btn-default dropdown-toggle deconButton" data-toggle="dropdown">
-                <span class="attrSelector">{{action}}</span>
+                <span class="attrSelector">{{actionDisplayName(action)}}</span>
                 <span class="caret"></span>
             </button>
             <button ng-if="!dataFieldsSelected || dataFieldsSelected.length === 0"
@@ -72,11 +73,14 @@
 
             <ul class="dropdown-menu" role="menu">
                 <li class="deconDropDownItem">
-                    <a ng-click="selectMappingType('nominal')">Nominal</a>
+                    <a ng-click="selectMappingType('nominal')">Categorical</a>
                 </li>
                 <li class="deconDropDownItem">
                     <a ng-if="allowMappingSelect('linear')" ng-click="selectMappingType('linear')">Linear</a>
                     <a ng-if="!allowMappingSelect('linear')" style="color:grey;">Linear</a>
+                </li>
+                <li class="deconDropDownItem">
+                    <a ng-click="selectMappingType('')">None</a>
                 </li>
             </ul>
         </div>
@@ -88,7 +92,7 @@
                             <th>Orig</th>
                             <th>New</th>
                         </tr>
-                        <tr ng-repeat="attrClass in data[selectedSchema].uniqVals(attrSelected, true)">
+                        <tr ng-repeat="attrClass in visDataService.getSelected().uniqVals(attrSelected, true)">
                             <td>{{attrClass}}</td>
                             <td><input class="form-control" ng-keypress="attrChange($event, attrClass, attrSelected)"></td>
                         </tr>
@@ -96,8 +100,8 @@
 				</span>
 
 					<span ng-if="showAddLinearMappingDialog()">
-						<p style="color:red;" ng-if="attrSelected && data[selectedSchema].attrIsMapped(attrSelected)">
-                            Warning: {{attrSelected}} already has a mapping from {{data[selectedSchema].attrIsMapped(attrSelected).data}}.
+						<p style="color:red;" ng-if="attrSelected && visDataService.getSelected().attrIsMapped(attrSelected)">
+                            Warning: {{attrSelected}} already has a mapping from {{visDataService.getSelected().attrIsMapped(attrSelected).data}}.
                             Changing the values for this attribute will remove its existing mapping.
                         </p>
 						<table class="table">
@@ -129,8 +133,8 @@
                         </table>
 					</span>
 					<span ng-if="showAddNominalMappingDialog()">
-						<p style="color:red;" ng-if="attrSelected && isMapped(attrSelected)">
-                            Warning: {{attrSelected}} already has a mapping from {{isMapped(attrSelected).data}}.
+						<p style="color:red;" ng-if="attrSelected && visDataService.getSelected().attrIsMapped(attrSelected)">
+                            Warning: {{attrSelected}} already has a mapping from {{visDataService.getSelected().attrIsMapped(attrSelected).data}}.
                             Changing the values for this attribute will remove its existing mapping.
                         </p>
 						<table class="changeMapping table">
@@ -142,7 +146,7 @@
                                     {{attrSelected}}
                                 </th>
                             </tr>
-                            <tr ng-repeat="from in data[selectedSchema].uniqVals(dataFieldsSelected[0])">
+                            <tr ng-repeat="from in visDataService.getSelected().uniqVals(dataFieldsSelected[0])">
                                 <td>
                                     {{from}}
                                 </td>

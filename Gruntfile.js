@@ -9,9 +9,9 @@ module.exports = function(grunt) {
                 dest: 'build/injected.js'
             },
             restyling: {
-                src: ['js/restyling.js'],
-                dest: 'build/restyling.js'
-            }
+	        src: ['js/restyling.js'],
+	        dest: 'build/restyling.js'
+	    }
         },
         watch: {
             scripts: {

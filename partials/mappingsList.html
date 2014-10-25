@@ -52,11 +52,12 @@
                     </tr>
                     <tr ng-repeat="coeff in mapping.params.coeffs">
                         <td>
+                            <span ng-if="$index !== 0">+</span>
                             <span ng-if="$index !== mapping.data.length">{{mapping.data[$index]}}&nbsp;*</span>
                         </td>
                         <td>
                             <input class="form-control" value="{{coeff}}"
-                                   ng-keypress="linearMappingChange($event, mapping, $index)"> <span ng-if="$index !== mapping.data.length">+</span>
+                                   ng-keypress="linearMappingChange($event, mapping, $index)">
                         </td>
                     </tr>
                 </table>

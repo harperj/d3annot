@@ -62,11 +62,11 @@ restylingApp.directive('svgInject', function($compile) {
         },
         restrict: 'E',
         link: function(scope, element, attrs, controller) {
-            scope.$watchGroup(["schema.numNodes", "attrs"], function(newValue, oldValue) {
+            scope.$watchGroup(["schema.numNodes", "schema.attrs"], function(newValue, oldValue) {
 //                    console.log(scope.schema);
 //                    console.log(scope.ind);
                 var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-                var canvasWidth = 20;
+                var canvasWidth = 40;
                 svg.setAttribute("width", canvasWidth.toString());
                 svg.setAttribute("height", canvasWidth.toString());
                 _.each(element[0].children, function(node) {

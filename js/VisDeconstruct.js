@@ -47,7 +47,7 @@ function extractMappings(schema) {
  */
 function extractNominalMappings (schema) {
     var nominalMappings = [];
-    _.each(schema.schema, function (schemaItem) {
+    _.each(_.keys(schema.data), function (schemaItem) {
         var dataArray = schema.data[schemaItem];
 
         var attrNames = _.keys(schema.attrs);
@@ -776,6 +776,7 @@ module.exports = {
     extractNodeAttrs: extractNodeAttrs,
     extractMappings: extractMappings,
     extractMultiLinearMappings: extractMultiLinearMappings,
+    extractNominalMappings: extractNominalMappings,
     schematize: schematize,
     extractData: extractData,
     extractVisAttrs: extractVisAttrs,
