@@ -1,0 +1,5 @@
+add nominal mapping interface
+fix selections
+push attribute updates to dataSets
+
+lines

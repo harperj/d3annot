@@ -3,6 +3,16 @@
   outline: 2px solid #5166bb !important;
 }
 
+@font-face {
+	font-family: officina;
+	src: url('http://fonts.googleapis.com/css?family=Tauri');
+}
+
+.officina {
+	font-family: officina;
+}
+
+
 .custom-menu {
   display: none;
   z-index:1000;
