@@ -1,0 +1,162 @@
+<div class="bottomSticky" ng-controller="AddMappingsController">
+    <h3 class="sectionHeader">Add Mapping</h3>
+    <form>
+        Data Field:
+        <div class="btn-group">
+            <span ng-repeat="dataField in dataFieldsSelected">
+                <button id="dataSelectorButton{{dataFieldsSelected.length}}" type="button" class="btn btn-default dropdown-toggle deconButton" data-toggle="dropdown">
+                    <span class="attrSelector">{{dataField}}</span>
+                    <span class="caret"></span>
+                </button>
+                <ul class="dropdown-menu" role="menu">
+                    <li class="deconDropDownItem" ng-repeat="dataField in getRemainingFields()">
+                        <a ng-click="addDataField(dataField, $parent.$index)">{{dataField}}</a>
+                    </li>
+                    <li class="deconDropDownItem">
+                        <a ng-click="removeDataField($index)">None</a>
+                    </li>
+                </ul>
+                <br />
+            </span>
+
+            <!-- Add Data Field Dropdown -->
+            <span ng-if="allowAddField()">
+                <button id="dataSelectorButton0" type="button"
+                        class="btn btn-default dropdown-toggle deconButton" data-toggle="dropdown">
+                    <span class="attrSelector"></span>
+                    <span class="caret"></span>
+                </button>
+                <ul class="dropdown-menu" role="menu">
+                    <li class="deconDropDownItem" ng-repeat="dataField in getRemainingFields()">
+                        <a ng-click="addDataField(dataField, dataFieldsSelected.length)">{{dataField}}</a>
+                    </li>
+                    <li class="deconDropDownItem">
+                        <a ng-click="removeDataField($index)">None</a>
+                    </li>
+                </ul>
+                <br />
+            </span>
+        </div>
+
+        Attribute:
+        <div class="btn-group">
+            <button type="button" class="btn btn-default dropdown-toggle deconButton" data-toggle="dropdown">
+                <span ng-if="visDataService.getSelected().attrIsMapped(attrSelected)" style="color: red;" class="attrSelector">{{attrSelected}}</span>
+                <span ng-if="!visDataService.getSelected().attrIsMapped(attrSelected)" class="attrSelector">{{attrSelected}}</span>
+                <span class="caret"></span>
+            </button>
+            <ul class="dropdown-menu" role="menu">
+                <li class="deconDropDownItem" ng-repeat="(attr, val) in visDataService.getSelected().attrs">
+                    <a ng-if="attrSelectable(attr)"
+                       ng-click="$parent.$parent.attrSelected = attr"
+                       ng-class="{mappedAttrLink: visDataService.getSelected().attrIsMapped(attr)}">
+                        {{attr}}
+                    </a>
+                    <a ng-if="!attrSelectable(attr)" style="color: grey;">{{attr}}</a>
+                </li>
+            </ul>
+        </div>
+        <br />
+
+        Mapping Type:
+        <div class="btn-group">
+            <button ng-if="dataFieldsSelected.length > 0" type="button" class="btn btn-default dropdown-toggle deconButton" data-toggle="dropdown">
+                <span class="attrSelector">{{actionDisplayName(action)}}</span>
+                <span class="caret"></span>
+            </button>
+            <button ng-if="!dataFieldsSelected || dataFieldsSelected.length === 0"
+                    disabled type="button" class="btn btn-default dropdown-toggle deconButton" data-toggle="dropdown">
+                <span class="attrSelector"></span>
+                <!--<span class="attrSelector" ng-if="action">{{action}}</span> -->
+                <span class="caret"></span>
+            </button>
+
+            <ul class="dropdown-menu" role="menu">
+                <li class="deconDropDownItem">
+                    <a ng-click="selectMappingType('nominal')">Categorical</a>
+                </li>
+                <li class="deconDropDownItem">
+                    <a ng-if="allowMappingSelect('linear')" ng-click="selectMappingType('linear')">Linear</a>
+                    <a ng-if="!allowMappingSelect('linear')" style="color:grey;">Linear</a>
+                </li>
+                <li class="deconDropDownItem">
+                    <a ng-click="selectMappingType('')">None</a>
+                </li>
+            </ul>
+        </div>
+
+				<span ng-if="showChangeAttrDialog()">
+					Select value(s):
+					<table class="table">
+                        <tr>
+                            <th>Orig</th>
+                            <th>New</th>
+                        </tr>
+                        <tr ng-repeat="attrClass in visDataService.getSelected().uniqVals(attrSelected, true)">
+                            <td>{{attrClass}}</td>
+                            <td><input class="form-control" ng-keypress="attrChange($event, attrClass, attrSelected)"></td>
+                        </tr>
+                    </table>
+				</span>
+
+					<span ng-if="showAddLinearMappingDialog()">
+						<p style="color:red;" ng-if="attrSelected && visDataService.getSelected().attrIsMapped(attrSelected)">
+                            Warning: {{attrSelected}} already has a mapping from {{visDataService.getSelected().attrIsMapped(attrSelected).data}}.
+                            Changing the values for this attribute will remove its existing mapping.
+                        </p>
+						<table class="table">
+                            <tr>
+                                <th></th>
+                                <th>
+                                    {{attrSelected}} =
+                                </th>
+                            </tr>
+                            <tr ng-repeat="dataField in dataFieldsSelected">
+                                <td>
+                                    {{dataField}}&nbsp;*
+                                </td>
+                                <td>
+                                    <input class="form-control"
+                                           ng-model="newLinearMappingData[$index]"
+                                           ng-keypress="addLinearMapping($event)">
+                                    <span ng-if="$index > 0 && !$last">+</span>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>+</td>
+                                <td>
+                                    <input class="form-control"
+                                           ng-model="newLinearMappingData[newLinearMappingData.length-1]"
+                                           ng-keypress="addLinearMapping($event)">
+                                </td>
+                            </tr>
+                        </table>
+					</span>
+					<span ng-if="showAddNominalMappingDialog()">
+						<p style="color:red;" ng-if="attrSelected && visDataService.getSelected().attrIsMapped(attrSelected)">
+                            Warning: {{attrSelected}} already has a mapping from {{visDataService.getSelected().attrIsMapped(attrSelected).data}}.
+                            Changing the values for this attribute will remove its existing mapping.
+                        </p>
+						<table class="changeMapping table">
+                            <tr>
+                                <th>
+                                    {{dataFieldsSelected[0]}}
+                                </th>
+                                <th>
+                                    {{attrSelected}}
+                                </th>
+                            </tr>
+                            <tr ng-repeat="from in visDataService.getSelected().uniqVals(dataFieldsSelected[0])">
+                                <td>
+                                    {{from}}
+                                </td>
+                                <td>
+                                    <input ng-model="newNominalMappingData[from]"
+                                           class="form-control"
+                                           ng-keypress="addNominalMapping($event)">
+                                </td>
+                            </tr>
+                        </table>
+					</span>
+    </form>
+</div>

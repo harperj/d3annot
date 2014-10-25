@@ -1,0 +1,67 @@
+<div class="mapping-group" ng-controller="MappingsListController">
+    <h3 class="sectionHeader">Mappings:</h3>
+    <div class="panel-group" id="mappings" ng-repeat="mapping in data[selectedSchema.val].mappings">
+        <div class="panel panel-default">
+            <div ng-if="!isLinear(mapping)" class="nominal panel-heading btn-toolbar">
+                <a data-toggle="collapse" style="color:black;" data-parent="#mappings" href="#mapping{{$index}}">
+                    {{mapping.data}} &#10141; {{mapping.attr}}
+                    <button ng-click="removeMapping(mapping)" style="border: 0;float: right;background-color:inherit;"
+                            type="button" class="btn btn-default btn-xs">
+                        <span class="glyphicon glyphicon-remove"></span>
+                    </button>
+                </a>
+            </div>
+            <div ng-if="isLinear(mapping)" class="linear panel-heading btn-toolbar">
+                <a data-toggle="collapse" style="color:black;" data-parent="#mappings" href="#mapping{{$index}}">
+                    <span ng-repeat="datum in mapping.data">{{datum}}<span ng-if="!$last">,</span> </span> &#10141; {{mapping.attr}}
+                    <button ng-click="removeMapping(mapping)" style="border: 0;float: right;background-color:inherit;"
+                            type="button" class="btn btn-default btn-xs">
+                        <span class="glyphicon glyphicon-remove"></span>
+                    </button>
+                </a>
+            </div>
+
+            <div id="mapping{{$index}}" class="panel-collapse collapse" ng-if="mapping.type === 'nominal'">
+                <table class="changeMapping table">
+                    <tr>
+                        <th>
+                            {{mapping.data}}
+                        </th>
+                        <th>
+                            {{mapping.attr}}
+                        </th>
+                    </tr>
+                    <tr ng-repeat="(from, to) in mapping.params">
+                        <td>
+                            {{from}}
+                        </td>
+                        <td>
+                            <input class="form-control" value="{{to}}"
+                                   ng-keypress="nominalMappingChange($event, mapping, from)">
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <div id="mapping{{$index}}" class="panel-collapse collapse" ng-if="mapping.type === 'linear'">
+                <table class="changeMapping table">
+                    <tr>
+                        <th></th>
+                        <th>
+                            {{mapping.attr}} =
+                        </th>
+                    </tr>
+                    <tr ng-repeat="coeff in mapping.params.coeffs">
+                        <td>
+                            <span ng-if="$index !== 0">+</span>
+                            <span ng-if="$index !== mapping.data.length">{{mapping.data[$index]}}&nbsp;*</span>
+                        </td>
+                        <td>
+                            <input class="form-control" value="{{coeff}}"
+                                   ng-keypress="linearMappingChange($event, mapping, $index)">
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
